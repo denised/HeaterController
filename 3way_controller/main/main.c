@@ -9,12 +9,10 @@
 #include "protocol_examples_common.h"
 
 // Our code starts here.
-#include "tlistener.h"
-#include "power_controller.h"
+#include "libconfig.h"
+#include "libdecls.h"
 
 #define TAG "Main"
-#define TEMP_PORT 3339
-#define CNTRL_PORT 3337
 
 
 void app_main(void)
@@ -37,15 +35,9 @@ void app_main(void)
 
     // Configure independent tasks...
     // Listener for temperature updates
-    xTaskCreate(temperature_listener_task, "temp_listener", 4096, (void*)TEMP_PORT, 5, NULL);
+    xTaskCreate(temperature_listener_task, "temp_listener", 4096, NULL, 5, NULL);
 
 
     // Start the main controller
-    struct power_controller_config config = {
-        .low_watt_switch = 5,
-        .high_watt_switch = 5,
-        .get_ambient_temperature = current_temperature,
-        .get_heater_temperature = current_temperature
-    };
-    power_controller_start( &config );
+    power_controller_start( );
 }

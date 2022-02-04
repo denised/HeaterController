@@ -6,16 +6,15 @@
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
-#include "tlistener.h"
+
+#include "libconfig.h"
+#include "libdecls.h"
 
 static char *TAG = "temp listener";
-
-// How long to trust the last-read value for, before discarding it, in microseconds
-#define READ_LIFETIME (30 * 60 * 1000 * 1000)
 static int temp_store = NO_TEMP_VALUE;
 static int64_t temp_read = 0;
 
-int current_temperature() {
+int current_ambient_temperature() {
     
     int64_t current_time = esp_timer_get_time();
     int64_t ts_delta = current_time - temp_read;
@@ -32,14 +31,12 @@ int current_temperature() {
 
 // Code taken pretty much directly from protocols/sockets/udp_server example
 
-void temperature_listener_task(void *pvParameters)
+void temperature_listener_task()
 {
     char rx_buffer[128];
-    char addr_str[128];
-    int port = (int)pvParameters;
     struct sockaddr_in listen_to = {
             .sin_family = AF_INET,
-            .sin_port = htons(port),
+            .sin_port = htons(TEMPERATURE_PORT),
             .sin_addr.s_addr = htonl(INADDR_ANY)
         };
 
@@ -66,8 +63,6 @@ void temperature_listener_task(void *pvParameters)
                 break;
             }
             else {
-                // Get the sender's ip address as string for logging
-                inet_ntoa_r(((struct sockaddr_in *)&sender_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
                 rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string...
                 ESP_LOGI(TAG, "Received %s", rx_buffer);
 
@@ -79,14 +74,13 @@ void temperature_listener_task(void *pvParameters)
                 else {
                     // We might want to add an error check that the temperature change isn't greater than we expect?
                     int change = val - temp_store;
-                    if (change) {
+                    if (change && temp_store != NO_TEMP_VALUE) {
                         ESP_LOGI(TAG, "Temperature change of %d degrees", change);
                     }
 
                     // store it, and remember when we last read it
                     temp_read = esp_timer_get_time();
                     temp_store = val;
-                    ESP_LOGI(TAG, "Set time read to %lld", temp_read);
                 }
             }
         }

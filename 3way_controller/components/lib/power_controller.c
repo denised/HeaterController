@@ -2,31 +2,23 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "power_controller.h"
+
+#include "libconfig.h"
+#include "libdecls.h"
 
 // This is the code that actually does the controlling.
 
-// I'm sure there's a way to organize the code that lets me include this in both components,
-// but I'm too lazy to figure it out just now...
-#define NO_TEMP_VALUE -100
-
-// How long to go without information before complaining, in microseconds
-#define FLYING_BLIND_DURATION (30*60*1000*1000)
-
 static char *TAG = "power controller";
-static struct power_controller_config the_config;
 static int temp_targets[24] = {19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
                                19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19 };
 static int64_t last_update;
 
-// The maximum heater temperature to tolerate
-const int max_heater_temperature = 55;
 
 void set_temperature_schedule( int *new_temps ) {
     for(int i=0; i<24; i++) {
         int nt = new_temps[i];
         if ( nt < 10 || nt > 30 ) {
-            ESP_LOGW(TAG,"Temperature target %d out of bounds; ignoreing", nt);
+            ESP_LOGW(TAG,"Temperature target %d out of bounds; ignoring", nt);
         }
         else {
             temp_targets[i] = nt;
@@ -41,11 +33,14 @@ void power_controller_loop() {
     while(1) {
         // For now, just ignore time of day and use the first value
         desired_temp = temp_targets[0];
-        actual_temp = (*(the_config.get_ambient_temperature))();
-        heater_temp = (*(the_config.get_heater_temperature))();
+        actual_temp = current_ambient_temperature();
+        heater_temp = 22;
         ESP_LOGI(TAG,"Desired temp %d, actual %d, heater %d", desired_temp, actual_temp, heater_temp);
         
-        if ( desired_temp == NO_TEMP_VALUE || actual_temp == NO_TEMP_VALUE ) {
+        if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
+            ESP_LOGW(TAG, "Discontinuing heat, heater temperature is %d", heater_temp);
+        }
+        else if ( desired_temp == NO_TEMP_VALUE || actual_temp == NO_TEMP_VALUE ) {
             int64_t ts_delta = esp_timer_get_time() - last_update;
             ESP_LOGI(TAG, "Missing information: desired temp %d, actual_temp %d, last_updated %lld", desired_temp, actual_temp, ts_delta);
             if (ts_delta > FLYING_BLIND_DURATION) {
@@ -67,7 +62,7 @@ void power_controller_loop() {
         }
         
         // Delay, in milliseconds.
-        vTaskDelay(30 * 1000 / portTICK_PERIOD_MS);
+        vTaskDelay(HEATER_UPDATE_FREQUENCY / portTICK_PERIOD_MS);
     }
 
     vTaskDelete(NULL);
@@ -75,9 +70,8 @@ void power_controller_loop() {
 
 
 
-void power_controller_start(struct power_controller_config *set_config)
+void power_controller_start()
 {
-    the_config = *set_config;
     // prepare stuff
 
     last_update = esp_timer_get_time();
