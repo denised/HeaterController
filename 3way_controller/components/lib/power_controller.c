@@ -34,7 +34,7 @@ void power_controller_loop() {
         // For now, just ignore time of day and use the first value
         desired_temp = temp_targets[0];
         actual_temp = current_ambient_temperature();
-        heater_temp = 22;
+        heater_temp = current_heater_temperature();
         ESP_LOGI(TAG,"Desired temp %d, actual %d, heater %d", desired_temp, actual_temp, heater_temp);
         
         if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
@@ -42,7 +42,7 @@ void power_controller_loop() {
         }
         else if ( desired_temp == NO_TEMP_VALUE || actual_temp == NO_TEMP_VALUE ) {
             int64_t ts_delta = esp_timer_get_time() - last_update;
-            ESP_LOGI(TAG, "Missing information: desired temp %d, actual_temp %d, last_updated %lld", desired_temp, actual_temp, ts_delta);
+            ESP_LOGI(TAG, "Missing information: desired temp %d, actual_temp %d, heater_temp %d, last_updated %lld", desired_temp, actual_temp, heater_temp, ts_delta);
             if (ts_delta > FLYING_BLIND_DURATION) {
                 ESP_LOGE(TAG, "No information to control with!");
             }

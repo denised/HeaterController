@@ -36,6 +36,7 @@ void app_main(void)
     // Configure independent tasks...
     // Listener for temperature updates
     xTaskCreate(temperature_listener_task, "temp_listener", 4096, NULL, 5, NULL);
+    heater_temp_reader_init();
 
 
     // Start the main controller
