@@ -1,5 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 
@@ -39,6 +40,8 @@ void power_controller_loop() {
         
         if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
             ESP_LOGW(TAG, "Discontinuing heat, heater temperature is %d", heater_temp);
+            gpio_set_level(LWATT_PIN, 0);
+            gpio_set_level(HWATT_PIN, 0);
         }
         else if ( desired_temp == NO_TEMP_VALUE || actual_temp == NO_TEMP_VALUE ) {
             int64_t ts_delta = esp_timer_get_time() - last_update;
@@ -46,19 +49,29 @@ void power_controller_loop() {
             if (ts_delta > FLYING_BLIND_DURATION) {
                 ESP_LOGE(TAG, "No information to control with!");
             }
-            ESP_LOGI(TAG, "Flying blind; default behavior");
+            ESP_LOGI(TAG, "Flying blind; default behavior: low heat");
+            gpio_set_level(LWATT_PIN, 1);
+            gpio_set_level(HWATT_PIN, 0);
         }
         else if ( actual_temp > desired_temp ) {
             ESP_LOGI(TAG, "Too warm; turn off");
+            gpio_set_level(LWATT_PIN, 0);
+            gpio_set_level(HWATT_PIN, 0);
         }
         else if ( desired_temp - actual_temp <= 2 ) {
             ESP_LOGI(TAG, "Just a little please");
+            gpio_set_level(LWATT_PIN, 1);
+            gpio_set_level(HWATT_PIN, 0);
         }
         else if ( desired_temp - actual_temp <= 5 ) {
             ESP_LOGI(TAG, "Medium");
+            gpio_set_level(LWATT_PIN, 0);
+            gpio_set_level(HWATT_PIN, 1);
         }
         else {
             ESP_LOGI(TAG,"Full blast!");
+            gpio_set_level(LWATT_PIN, 1);
+            gpio_set_level(HWATT_PIN, 1);
         }
         
         // Delay, in milliseconds.
@@ -72,8 +85,16 @@ void power_controller_loop() {
 
 void power_controller_start()
 {
-    // prepare stuff
+    // Initialize stuff
+    // Output pins
+    gpio_config_t pin_conf = {
+        .pin_bit_mask = ((1ULL << LWATT_PIN) | (1ULL << HWATT_PIN)),
+        .mode = GPIO_MODE_OUTPUT,
+    };
+    gpio_config(&pin_conf);
 
     last_update = esp_timer_get_time();
+
+    // Go!
     xTaskCreate(power_controller_loop, "power_controller", 4096, NULL, 5, NULL);
 }

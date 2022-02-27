@@ -10,6 +10,11 @@
 // Port used by the heater for broadcast information
 #define HEATER_PORT 3341
 
+// Pin used to drive the lower wattage heater element
+#define LWATT_PIN 7
+
+// Pin used to drive the higher wattage heater element
+#define HWATT_PIN 20
 
 // The value used to denote if there is no known / valid temperature reading.
 #define NO_TEMP_VALUE -100
