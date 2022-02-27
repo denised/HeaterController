@@ -3,23 +3,31 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-
 #include "libconfig.h"
 #include "libdecls.h"
 
 // This is the code that actually does the controlling.
+// 
+// The controller pays attention to several sorts of inputs:
+//   * the desired temperature (specified as a 24-hour schedule)
+//   * the local (heater) temperature
+//   * the ambient (remote) temperature
+// and combines those to  determine whether the heater should be off, low, medium or high.
 
 static char *TAG = "power controller";
-static int temp_targets[24] = {19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
-                               19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19 };
+static int temp_targets[24] = {19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,   // midnight -- 11am
+                               19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19 };  // noon -- 11pm
 static int64_t last_update;
+
+// float safe comparison
+#define NO_T_VALUE(temp) (temp < NO_TEMP_VALUE + 0.1)
 
 
 void set_temperature_schedule( int *new_temps ) {
     for(int i=0; i<24; i++) {
         int nt = new_temps[i];
         if ( nt < 10 || nt > 30 ) {
-            ESP_LOGW(TAG,"Temperature target %d out of bounds; ignoring", nt);
+            ESP_LOGE(TAG,"Temperature target %d out of bounds; ignoring", nt);
         }
         else {
             temp_targets[i] = nt;
@@ -30,22 +38,22 @@ void set_temperature_schedule( int *new_temps ) {
 
 
 void power_controller_loop() {
-    int desired_temp, actual_temp, heater_temp;
+    float desired_temp, actual_temp, heater_temp;
     while(1) {
         // For now, just ignore time of day and use the first value
         desired_temp = temp_targets[0];
         actual_temp = current_ambient_temperature();
         heater_temp = current_heater_temperature();
-        ESP_LOGI(TAG,"Desired temp %d, actual %d, heater %d", desired_temp, actual_temp, heater_temp);
+        ESP_LOGI(TAG,"Desired temp %f, actual %f, heater %f", desired_temp, actual_temp, heater_temp);
         
         if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
-            ESP_LOGW(TAG, "Discontinuing heat, heater temperature is %d", heater_temp);
+            ESP_LOGW(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
             gpio_set_level(LWATT_PIN, 0);
             gpio_set_level(HWATT_PIN, 0);
         }
-        else if ( desired_temp == NO_TEMP_VALUE || actual_temp == NO_TEMP_VALUE ) {
+        else if ( NO_T_VALUE(desired_temp) || NO_T_VALUE(actual_temp) ) {
             int64_t ts_delta = esp_timer_get_time() - last_update;
-            ESP_LOGI(TAG, "Missing information: desired temp %d, actual_temp %d, heater_temp %d, last_updated %lld", desired_temp, actual_temp, heater_temp, ts_delta);
+            ESP_LOGI(TAG, "Missing information: desired temp %f, actual_temp %f, heater_temp %f, last_updated %lld", desired_temp, actual_temp, heater_temp, ts_delta);
             if (ts_delta > FLYING_BLIND_DURATION) {
                 ESP_LOGE(TAG, "No information to control with!");
             }

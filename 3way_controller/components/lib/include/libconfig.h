@@ -14,10 +14,10 @@
 #define LWATT_PIN 7
 
 // Pin used to drive the higher wattage heater element
-#define HWATT_PIN 20
+#define HWATT_PIN 19
 
 // The value used to denote if there is no known / valid temperature reading.
-#define NO_TEMP_VALUE -100
+#define NO_TEMP_VALUE -100.0
 
 // How long to trust the last-read temperature value for, before discarding it, 
 // in microseconds

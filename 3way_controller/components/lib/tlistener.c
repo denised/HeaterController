@@ -6,15 +6,17 @@
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
-
 #include "libconfig.h"
 #include "libdecls.h"
 
+// Listen for temperature broadcasts from the remote temperature station.
+// This code is taken pretty much directly from protocols/sockets/udp_server example
+
 static char *TAG = "temp listener";
-static int temp_store = NO_TEMP_VALUE;
+static float temp_store = NO_TEMP_VALUE;
 static int64_t temp_read = 0;
 
-int current_ambient_temperature() {
+float current_ambient_temperature() {
     
     int64_t current_time = esp_timer_get_time();
     int64_t ts_delta = current_time - temp_read;
@@ -29,7 +31,6 @@ int current_ambient_temperature() {
     }
 }
 
-// Code taken pretty much directly from protocols/sockets/udp_server example
 
 void temperature_listener_task()
 {
