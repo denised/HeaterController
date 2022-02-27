@@ -34,3 +34,10 @@
 
 // Frequency with which to check and update the heater control, in milliseconds
 #define HEATER_UPDATE_FREQUENCY (30*1000)
+
+// Time zone to use when interpreting the current heating schedule
+// Note the symbolic time zone names are not supported; must specify time offset directly
+// (which happens to be backwards from how we usually write it).
+// There is no automatic way AFAIK to automatically update for daylight savings time.
+// Will deal with that at some future time...
+#define LOCAL_TIME_ZONE "PST+8"

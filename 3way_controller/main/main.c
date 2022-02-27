@@ -1,11 +1,13 @@
 #include <string.h>
 #include <sys/param.h>
+#include <sys/time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_sntp.h"
 #include "protocol_examples_common.h"
 
 // Our code starts here.
@@ -14,6 +16,15 @@
 
 #define TAG "Main"
 
+void init_time() {
+    // Start sntp time synchronization
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+    sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
+    setenv("TZ", LOCAL_TIME_ZONE, 1);
+    tzset();
+}
 
 void app_main(void)
 {
@@ -33,12 +44,11 @@ void app_main(void)
     // Note: if Wifi initialization fails, the following independent tasks will never do anything
     // interesting, and the controller will operate in a "default" state.
 
-    // Configure independent tasks...
-    // Listener for temperature updates
     xTaskCreate(temperature_listener_task, "temp_listener", 4096, NULL, 5, NULL);
     heater_temp_reader_init();
-
+    init_time();
 
     // Start the main controller
-    power_controller_start( );
+    power_controller_start();
 }
+

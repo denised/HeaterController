@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
@@ -36,15 +37,32 @@ void set_temperature_schedule( int *new_temps ) {
     ESP_LOGI(TAG,"Temperature targets updated");
 }
 
+int current_hour() { 
+    // Note if time service has not been initialized properly, this will be wrong.  That's acceptable.  
+    time_t now;
+    struct tm timeinfo;
+
+    time(&now);
+    localtime_r(&now, &timeinfo);
+
+    // temporary
+    char strftime_buf[64];
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    ESP_LOGI("TIME TEST", "The current date/time is: %s", strftime_buf);
+
+    return timeinfo.tm_hour;
+}
+
 
 void power_controller_loop() {
+    int hour;
     float desired_temp, actual_temp, heater_temp;
     while(1) {
-        // For now, just ignore time of day and use the first value
-        desired_temp = temp_targets[0];
+        hour = current_hour();
+        desired_temp = temp_targets[hour];
         actual_temp = current_ambient_temperature();
         heater_temp = current_heater_temperature();
-        ESP_LOGI(TAG,"Desired temp %f, actual %f, heater %f", desired_temp, actual_temp, heater_temp);
+        ESP_LOGI(TAG,"Desired temp[%d] %f, actual %f, heater %f", hour, desired_temp, actual_temp, heater_temp);
         
         if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
             ESP_LOGW(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
