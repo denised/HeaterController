@@ -1,3 +1,3 @@
 idf_component_register(SRC_DIR "."
-                    SRCS "tlistener.c" "power_controller.c" "heater_temp.c"
+                    SRCS "listener.c" "power_controller.c" "temperatures.c"
                     INCLUDE_DIRS "include")

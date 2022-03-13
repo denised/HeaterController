@@ -6,3 +6,4 @@ sdkconfig
 sdkconfig.*
 *.out
 *.old
+*.log

@@ -44,8 +44,7 @@ void app_main(void)
     // Note: if Wifi initialization fails, the following independent tasks will never do anything
     // interesting, and the controller will operate in a "default" state.
 
-    xTaskCreate(temperature_listener_task, "temp_listener", 4096, NULL, 5, NULL);
-    heater_temp_reader_init();
+    init_temps();
     init_time();
 
     // Start the main controller
