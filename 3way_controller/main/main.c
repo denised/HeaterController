@@ -1,30 +1,9 @@
-#include <string.h>
-#include <sys/param.h>
-#include <sys/time.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_event.h"
-#include "esp_log.h"
-#include "esp_sntp.h"
 #include "protocol_examples_common.h"
-
-// Our code starts here.
 #include "libconfig.h"
 #include "libdecls.h"
-
-#define TAG "Main"
-
-void init_time() {
-    // Start sntp time synchronization
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-    sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
-    setenv("TZ", LOCAL_TIME_ZONE, 1);
-    tzset();
-}
 
 void app_main(void)
 {
@@ -41,13 +20,15 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(example_connect());
 
-    // Note: if Wifi initialization fails, the following independent tasks will never do anything
+    // Note: if Wifi initialization fails, the following tasks will never do anything
     // interesting, and the controller will operate in a "default" state.
 
-    init_temps();
-    init_time();
+    broadcast_message("Booting...");
 
-    // Start the main controller
-    power_controller_start();
+    init_time();
+    init_temps();
+    init_console();
+
+    //power_controller_start();
 }
 

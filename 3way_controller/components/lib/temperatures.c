@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/temp_sensor.h"
