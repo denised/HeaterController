@@ -105,7 +105,7 @@ float current_outside_temperature() {
 
 void init_temps() {
     // ambient listener/updater
-    listener_task("ambient", false, TEMPERATURE_PORT, receive_ambient_temperature, NULL);
+    listener_task("ambient", TEMPERATURE_PORT, receive_ambient_temperature);
     
     // onboard sensor
      temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();

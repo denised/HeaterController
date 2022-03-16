@@ -22,6 +22,6 @@ void set_power_level(char *level);
 void power_controller_start();
 
 // Network actions
-void listener_task(const char *taskname, int is_tcp, int port, int callback(void *, int), int streamback(void *, int));
+void listener_task(const char *taskname, int port, int callback(void *, int));
 void get_internet_data(const char *server, const char *path,  char *fill_buffer, int fb_len);
 void broadcast_message(char *message);

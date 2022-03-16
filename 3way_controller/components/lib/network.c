@@ -19,26 +19,15 @@
  */
 
 /*
- * Listener: Perpetually listen for incoming UDP or TCP connections on a specified port.  
+ * Listener: Perpetually listen for incoming UDP connections on a specified port.  
  * This should be the last call made on an independent task.
- *
- * For UDP connections, the caller must provide a single callback to handle the received
- * message.
- *
- * For TCP connections, the caller must provide two callbacks.  The first callback is used for
- * the first buffer of a new message, and the second callback is called repeatedly until the
- * data is all consumed.  The second callback will be called a final time, with length zero, to
- * mark the end of the data, or with a negative length, to indicate an error occurred.  If
- * either callback returns a negative value this streaming process is interrupted (and the rest
- * of that message will be discarded).
+ * The caller must provide a single to handle the messages received.
  */
 
 struct argsholder {
     char *taskname;
-    int is_tcp; // false ==> udp connection
     int port;
     int (*callback)(void *, int);
-    int (*streamback)(void *, int);
 };
 
 static char *TAG = "network";
@@ -54,7 +43,7 @@ void listener_loop(struct argsholder *args) {
         };
 
     while (1) {
-        int sock = socket(AF_INET, (args->is_tcp ? SOCK_STREAM : SOCK_DGRAM), 0);
+        int sock = socket(AF_INET, SOCK_DGRAM, 0);
         if (sock < 0) {
             ESP_LOGE(TAG, "Unable to create socket: errno %d, task %s", errno, args->taskname);
             break;
@@ -66,9 +55,6 @@ void listener_loop(struct argsholder *args) {
             break;
         }
 
-        if (args->is_tcp) {
-            ESP_LOGE(TAG, "NOT IMPLEMENTED!  streaming isn't implemented yet");
-        }
         while (1) {
             int received_len = recv(sock, rx_buffer, sizeof(rx_buffer), 0);
 
@@ -92,13 +78,11 @@ void listener_loop(struct argsholder *args) {
 }
 
 
-void listener_task(const char *taskname, int is_tcp, int port, int callback(void *, int), int streamback(void *, int)) {
+void listener_task(const char *taskname, int port, int callback(void *, int)) {
     struct argsholder *args = malloc(sizeof *args);
     args->taskname = strcpy(malloc(strlen(taskname)+1), taskname);
-    args->is_tcp = is_tcp;
     args->port = port;
     args->callback = callback;
-    args->streamback = streamback;
     xTaskCreate((TaskFunction_t)listener_loop, taskname, 4096, args, 5, NULL);
 }
 

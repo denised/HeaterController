@@ -74,7 +74,7 @@ cmd_done:
 }
 
 void init_console() {
-    listener_task("console", false, CNTRL_PORT, recieve_command, NULL);
+    listener_task("console", CNTRL_PORT, recieve_command);
 }
 
 
