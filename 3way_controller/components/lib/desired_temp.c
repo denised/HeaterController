@@ -15,7 +15,7 @@ static int override_temp = NO_TEMP_VALUE;
 static int64_t override_until = 0;
 
 
-void set_temperature_schedule( int *new_temps, int temporary ) {
+void set_temperature_schedule( int *new_temps ) {
     for(int i=0; i<24; i++) {
         int nt = new_temps[i];
         if ( nt < 10 || nt > 30 ) {

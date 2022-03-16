@@ -29,6 +29,8 @@ void app_main(void)
     init_temps();
     init_console();
 
-    //power_controller_start();
+    power_controller_start();
+
+    broadcast_message("...Booting complete");
 }
 

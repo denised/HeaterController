@@ -6,7 +6,7 @@
 #include "libconfig.h"
 #include "libdecls.h"
 
-// Listen for "commands" on a UDP port, and handle them when they arrive.
+// Handle requests from the console
 
 const char *TAG = "console";
 
@@ -39,11 +39,37 @@ int recieve_command(void *buf, int len) {
             bump_temperature(amount, duration);
         }
     }
-    // TODO: other commands go here.
+    else if ( strcmp(cmd, "schedule") == 0 ) {
+        if (argcheck(1, nargs)) { // We can accept up to 24 values, but need at least one.
+            int i, lastval=0, newval, values[24];
+            for(i=1; i<nargs && i<24; i++) {
+                newval = atoi(args[i]);
+                if (newval == 0) {
+                    ESP_LOGW(TAG,"Badly formed command: %s is not a valid temperature",args[i]);
+                    goto cmd_done;
+                }
+                values[i] = lastval = newval;
+            }
+            for(; i<24; i++) {
+                values[i] = lastval;
+            }
+            set_temperature_schedule(values);
+        }
+    }
+    else if ( strcmp(cmd, "reboot") == 0 ) {
+        // TODO
+    }
+    else if ( strcmp(cmd, "update") == 0 ) {
+        // TODO
+    }
+    else if ( strcmp(cmd, "report") == 0 ) {
+        // TODO
+    }
     else {
         ESP_LOGE(TAG, "Unrecognized command %s", cmd);
     }
 
+cmd_done:
     return 0;
 }
 

@@ -10,7 +10,7 @@ float current_outside_temperature();
 void init_temps();
 
 // temperature setting
-void set_temperature_schedule(int *temps, int temporary);
+void set_temperature_schedule(int *temps);
 void bump_temperature(int increment, int hours);
 float current_desired_temperature();
 
