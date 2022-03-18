@@ -21,6 +21,10 @@ void init_console();
 void set_power_level(char *level);
 void power_controller_start();
 
+// OTA (Over the Air) upgrade
+void ota_upgrade(const char *ipaddr, int expected_len);
+void ota_check();
+
 // Network actions
 void listener_task(const char *taskname, int port, int callback(void *, int));
 void get_internet_data(const char *server, const char *path,  char *fill_buffer, int fb_len);

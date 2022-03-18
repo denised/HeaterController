@@ -56,10 +56,12 @@ int recieve_command(void *buf, int len) {
             set_temperature_schedule(values);
         }
     }
-    else if ( strcmp(cmd, "reboot") == 0 ) {
-        // TODO
-    }
     else if ( strcmp(cmd, "update") == 0 ) {
+        if (argcheck(2, nargs)) {
+            ota_upgrade(args[1], atoi(args[2]));
+        }
+    }
+    else if ( strcmp(cmd, "reboot") == 0 ) {
         // TODO
     }
     else if ( strcmp(cmd, "report") == 0 ) {

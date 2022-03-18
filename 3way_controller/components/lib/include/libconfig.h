@@ -11,6 +11,9 @@
 // Port used by the heater to broadcast information
 #define BROADCAST_PORT 3341
 
+// Port used to perform OTA update
+#define OTA_PORT 3343
+
 // Address to brodcast to; usually this would be an "all" address
 #define BROADCAST_IP_ADDR "10.0.0.255"
 
@@ -19,6 +22,10 @@
 
 // Pin used to drive the higher wattage heater element
 #define HWATT_PIN 10
+
+// Pin used to perform diagnostics on update.  This pin isn't used for anything
+// and isn't connected to anything.
+#define DIAGNOSTIC_PIN 4
 
 // The value used to denote if there is no known / valid temperature reading.
 #define NO_TEMP_VALUE -100.0

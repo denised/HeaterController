@@ -7,7 +7,9 @@
 
 void app_main(void)
 {
-    // Set up and connect to WIFI
+    ota_check();
+
+    // Set up standard system services, and connect to WIFI
     // We use the simple "example_connect" code used by the WIFI examples; 
     // it seems to be good enough for us.
     esp_err_t ret = nvs_flash_init();
@@ -23,7 +25,7 @@ void app_main(void)
     // Note: if Wifi initialization fails, the following tasks will never do anything
     // interesting, and the controller will operate in a "default" state.
 
-    broadcast_message("Booting...");
+    broadcast_message("Ah, good day!...1");
 
     init_time();
     init_temps();

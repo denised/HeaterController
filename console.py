@@ -1,11 +1,25 @@
 import socketserver
 import socket
 import threading
+from pathlib import Path
 from datetime import datetime
 
+# ####################################################################
 # Listen for messages coming from either the heater or the temperature station,
 # and send commands to the heater.
+######################################################################
 
+
+# sync with 3way_controller/components/include/libconfig.h
+temp_port = 3339
+heater_control_port = 3337
+heater_broadcast_port = 3341
+ota_port = 3343
+
+currdir = Path(__file__).parent
+heaterbinary = currdir/"3way_controller/build/3way_controller.bin"
+
+# Listener
 class MyUDPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].decode().strip()
@@ -16,12 +30,30 @@ def monitor_port(portno):
     with socketserver.UDPServer(("", portno), MyUDPHandler) as server:
         server.serve_forever()
 
+# uploader
+def start_upload(path: Path):
+    """Prepare connection and send file contents"""
+    sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sender.bind(('', ota_port))
+    sender.listen()
+    with sender:
+        conn, _ = sender.accept()
+        print("Upload connection accepted")
+        with conn:
+            with open(str(path), mode='rb') as f:
+                cnt = conn.sendfile(f)
+                print(f"Send {cnt} bytes; closing connection")
+        sender.shutdown()
+
+
 if __name__ == "__main__":
-    t1 = threading.Thread(target=monitor_port, args=(3339,), daemon=True)
-    t2 = threading.Thread(target=monitor_port, args=(3341,), daemon=True)
+    # Listen to data coming from the temperature station and heater
+    t1 = threading.Thread(target=monitor_port, args=(temp_port,), daemon=True)
+    t2 = threading.Thread(target=monitor_port, args=(heater_broadcast_port,), daemon=True)
     t1.start()
     t2.start()
 
+    # channel we use to send commands to the heater
     broadcaster = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     while(1):
@@ -35,11 +67,27 @@ if __name__ == "__main__":
                   amount degrees for duration hours
             schedule temp{1:24}  set an hourly schedule for desired temps.  If the
                   schedule is less than 24 hours long, the last value is repeated.
+            update filename: upgrade the sofware
             reboot: tell the heater to reboot itself [TODO]
-            update filename: upgrade the sofware [TODO]
             report: [TODO]
             """)
-        else:
-            broadcaster.sendto(cmd.encode(), ("10.0.0.255", 3337))
-            print(f"sent {cmd}")
+        elif cmd.startswith("up"):
+            # Currently hardwiring the path.  If we need to handle multiple binaries, will have to modify.
+            fp = Path(heaterbinary)
+            if not fp.exists():
+                print(f"File {fp} doesn't seem to exist")
+            else:
+                filelen = fp.stat().st_size
+                t3 = threading.Thread(target=start_upload, args=(fp,), daemon=True)
+                t3.start()
 
+                # warning: this next line will not work on some unix systems.
+                # in that case, replace with the code indicated here: https://stackoverflow.com/a/28950776
+                myip = socket.gethostbyname(socket.gethostname())
+                outcommand = f"update {myip} {filelen}"
+                broadcaster.sendto(outcommand.encode(), ('10.0.0.255', heater_control_port))
+                print(f"sent {outcommand}")
+        else:
+            broadcaster.sendto(cmd.encode(), ('10.0.0.255', heater_control_port))
+            print(f"sent {cmd}")
+ 
