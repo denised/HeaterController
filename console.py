@@ -43,7 +43,6 @@ def start_upload(path: Path):
             with open(str(path), mode='rb') as f:
                 cnt = conn.sendfile(f)
                 print(f"Send {cnt} bytes; closing connection")
-        sender.shutdown()
 
 
 if __name__ == "__main__":

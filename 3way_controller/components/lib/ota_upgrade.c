@@ -33,36 +33,36 @@ void ota_upgrade(const char *ipaddr, int expected_len)
 
     update_partition = esp_ota_get_next_update_partition(NULL);
     if (update_partition == NULL) {
-        ESP_LOGE(TAG, "Unable to obtain partition to write to");
+        LOGE(TAG, "Unable to obtain partition to write to");
         return;
     }
 
     sock = connect_to(ipaddr);
     if ( sock < 0 ) {
-        ESP_LOGE(TAG, "Unable to create connection to %s", ipaddr);
+        LOGE(TAG, "Unable to create connection to %s", ipaddr);
         return;
     }
 
     err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &update_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
+        LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
         goto cleanup;
     }
 
-    ESP_LOGI(TAG, "Starting OTA Update");
+    LOGI(TAG, "Starting OTA Update");
 
     int binary_file_length = 0;
     int data_read = 0;
     do {
         data_read = recv(sock, ota_buffer, sizeof(ota_buffer), 0);
         if (data_read < 0) {
-            ESP_LOGE(TAG, "network read failed (%d)", data_read);
+            LOGE(TAG, "network read failed (%d)", data_read);
             goto cleanup;
         }
         else if (data_read > 0) {
             err = esp_ota_write( update_handle, (const void *)ota_buffer, data_read);
             if (err != ESP_OK) {
-                ESP_LOGE(TAG, "esp_ota_write failed (%s)", esp_err_to_name(err));
+                LOGE(TAG, "esp_ota_write failed (%s)", esp_err_to_name(err));
                 goto cleanup;
             }
             binary_file_length += data_read;
@@ -70,9 +70,9 @@ void ota_upgrade(const char *ipaddr, int expected_len)
         }
     } while(data_read > 0);
 
-    ESP_LOGI(TAG, "Total data length received: %d", binary_file_length);
+    LOGI(TAG, "Total data length received: %d", binary_file_length);
     if (binary_file_length != expected_len) {
-        ESP_LOGE(TAG, "Length does not match expected length %d, aborting.", expected_len);
+        LOGE(TAG, "Length does not match expected length %d, aborting.", expected_len);
         goto cleanup;
     }
 
@@ -82,21 +82,21 @@ void ota_upgrade(const char *ipaddr, int expected_len)
     err = esp_ota_end(update_handle);
     if (err != ESP_OK) {
         if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
-            ESP_LOGE(TAG, "Image validation failed, image is corrupted");
+            LOGE(TAG, "Image validation failed, image is corrupted");
         } else {
-            ESP_LOGE(TAG, "esp_ota_end failed (%s)!", esp_err_to_name(err));
+            LOGE(TAG, "esp_ota_end failed (%s)!", esp_err_to_name(err));
         }
         return;
     }
 
     err = esp_ota_set_boot_partition(update_partition);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(err));
+        LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(err));
         return;
     }
 
     // Success!
-    ESP_LOGI(TAG, "Preparing to restart system!");
+    LOGI(TAG, "Preparing to restart system!");
     esp_restart();
 
 cleanup:
@@ -118,7 +118,7 @@ static bool diagnostic(void)
     io_conf.pull_up_en   = GPIO_PULLUP_ENABLE;
     gpio_config(&io_conf);
 
-    ESP_LOGI(TAG, "Diagnostics (5 sec)...");
+    LOGI(TAG, "Diagnostics (5 sec)...");
     vTaskDelay(5000 / portTICK_PERIOD_MS);
 
     bool diagnostic_is_ok = gpio_get_level(DIAGNOSTIC_PIN);
@@ -139,16 +139,16 @@ void ota_check(void) {
             // run diagnostic function ...
             bool diagnostic_is_ok = diagnostic();
             if (diagnostic_is_ok) {
-                ESP_LOGI(TAG, "Diagnostics completed successfully! Continuing execution ...");
+                LOGI(TAG, "Diagnostics completed successfully! Continuing execution ...");
                 esp_ota_mark_app_valid_cancel_rollback();
             } else {
-                ESP_LOGE(TAG, "Diagnostics failed! Start rollback to the previous version ...");
+                LOGE(TAG, "Diagnostics failed! Start rollback to the previous version ...");
                 esp_ota_mark_app_invalid_rollback_and_reboot();
             }
         }
     }
     else {
-        ESP_LOGW(TAG, "Unable to get OTA information!.  Continuing with current boot");
+        LOGW(TAG, "Unable to get OTA information!.  Continuing with current boot");
     }
 }
 

@@ -24,8 +24,24 @@ void power_controller_start();
 // OTA (Over the Air) upgrade
 void ota_upgrade(const char *ipaddr, int expected_len);
 void ota_check();
+const char *get_version();
 
 // Network actions
 void listener_task(const char *taskname, int port, int callback(void *, int));
-void get_internet_data(const char *server, const char *path,  char *fill_buffer, int fb_len);
-void broadcast_message(char *message);
+void get_internet_data(const char *server, const char *path, char *fill_buffer, int fb_len);
+void broadcast_message(const char *message);
+void broadcast_messagef(const char *fmt, ...);
+
+// duplicating esp logging so we can also broadcast it
+#define LOGE(tag,...) \
+    ESP_LOGE(tag,__VA_ARGS__); \
+    broadcast_messagef(__VA_ARGS__);
+
+#define LOGW(tag,...) \
+    ESP_LOGW(tag,__VA_ARGS__); \
+    broadcast_messagef(__VA_ARGS__);
+
+#define LOGI(tag,...) \
+    ESP_LOGI(tag,__VA_ARGS__); \
+    broadcast_messagef(__VA_ARGS__);
+

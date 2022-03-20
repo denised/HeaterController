@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
+#include "esp_system.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_err.h"
 #include "driver/temp_sensor.h"
 #include "libconfig.h"
 #include "libdecls.h"
@@ -52,13 +54,13 @@ int receive_ambient_temperature(void *buf, int len) {
     // Extract the temperature (in Celsius)
     float val = atof(cbuf);
     if (val < 2 || val > 40) {
-        ESP_LOGW(TAG, "Ambient temperature out of range; ignoring");
+        LOGW(TAG, "Ambient temperature out of range; ignoring");
     }
     else {
         // We might want to add an error check that the temperature change isn't greater than we expect?
         int change = val - ambient_store;
         if (change && ambient_store != NO_TEMP_VALUE) {
-            ESP_LOGI(TAG, "Ambient temperature change of %d degrees", change);
+            LOGI(TAG, "Ambient temperature change of %d degrees", change);
         }
 
         // store it, and remember when we last read it
@@ -82,13 +84,12 @@ float current_heater_temperature() {
     float val;
     int err;
     err = temp_sensor_read_celsius(&val);
-    ESP_ERROR_CHECK(err);
     if (err) {
-        ESP_LOGW(TAG, "Unable to read heater temperature");
+        LOGW(TAG, "Unable to read heater temperature");
         return NO_TEMP_VALUE;
     }
     else {
-        ESP_LOGI(TAG,"Heater temperature is %f", val);
+        LOGI(TAG,"Heater temperature is %f", val);
         return val;
     }
 }
@@ -106,10 +107,17 @@ float current_outside_temperature() {
 void init_temps() {
     // ambient listener/updater
     listener_task("ambient", TEMPERATURE_PORT, receive_ambient_temperature);
+    esp_err_t err;
     
     // onboard sensor
-     temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(temp_sensor_set_config(temp_sensor));
-    ESP_ERROR_CHECK(temp_sensor_start());
+    temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
+    err = temp_sensor_set_config(temp_sensor);
+    if (err != ESP_OK) {
+        LOGE(TAG, "temp sensor config failed (%s)", esp_err_to_name(err));
+    }
+    err = temp_sensor_start();
+    if (err != ESP_OK) {
+        LOGE(TAG, "temp sensor start failed (%s)", esp_err_to_name(err));
+    }
 }
 

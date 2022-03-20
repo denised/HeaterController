@@ -8,7 +8,7 @@
 
 // Handle requests from the console
 
-const char *TAG = "console";
+static const char *TAG = "console";
 
 // forward decl
 int split_string(char *input, char **substrings, int maxsplits);
@@ -19,13 +19,16 @@ int recieve_command(void *buf, int len) {
     char *args[30];
     char *cbuf = (char *)buf;
     cbuf[len] = 0;
-    ESP_LOGI(TAG, "Received command %s", cbuf);
+    LOGI(TAG, "Received command %s", cbuf);
 
     int nargs = split_string(buf, args, 30);
 
     char *cmd = args[0];
     if ( strcmp(cmd, "hello") == 0 ) {
         broadcast_message("hello back");
+    }
+    else if ( strcmp(cmd, "version") == 0 ) {
+        broadcast_message(get_version());
     }
     else if ( strcmp(cmd, "level") == 0 ) {
         if (argcheck(1, nargs)) {
@@ -45,7 +48,7 @@ int recieve_command(void *buf, int len) {
             for(i=1; i<nargs && i<24; i++) {
                 newval = atoi(args[i]);
                 if (newval == 0) {
-                    ESP_LOGW(TAG,"Badly formed command: %s is not a valid temperature",args[i]);
+                    LOGW(TAG,"Badly formed command: %s is not a valid temperature",args[i]);
                     goto cmd_done;
                 }
                 values[i] = lastval = newval;
@@ -68,7 +71,7 @@ int recieve_command(void *buf, int len) {
         // TODO
     }
     else {
-        ESP_LOGE(TAG, "Unrecognized command %s", cmd);
+        LOGE(TAG, "Unrecognized command %s", cmd);
     }
 
 cmd_done:
@@ -103,7 +106,7 @@ int split_string(char *input, char **substrings, int maxsplits) {
 int argcheck(int expect, int have) {
     // Check that we got as many tokens as we need.
     if (expect > have-1) {
-        ESP_LOGE(TAG, "Malformed command?  Expected %d tokens, got %d", expect+1, have);
+        LOGE(TAG, "Malformed command?  Expected %d tokens, got %d", expect+1, have);
         return 0;      
     }
     return 1;

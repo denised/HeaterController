@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include "esp_log.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
@@ -45,13 +47,13 @@ void listener_loop(struct argsholder *args) {
     while (1) {
         int sock = socket(AF_INET, SOCK_DGRAM, 0);
         if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create socket: errno %d, task %s", errno, args->taskname);
+            LOGE(TAG, "Unable to create socket: errno %d, task %s", errno, args->taskname);
             break;
         }
 
         int err = bind(sock, (struct sockaddr *)&listen_to, sizeof(listen_to));
         if (err < 0) {
-            ESP_LOGE(TAG, "Socket unable to bind: errno %d, task %s", errno, args->taskname);
+            LOGE(TAG, "Socket unable to bind: errno %d, task %s", errno, args->taskname);
             break;
         }
 
@@ -59,21 +61,20 @@ void listener_loop(struct argsholder *args) {
             int received_len = recv(sock, rx_buffer, sizeof(rx_buffer), 0);
 
             if (received_len < 0) {
-                ESP_LOGE(TAG, "receive failed: errno %d, task %s", errno, args->taskname);
+                LOGE(TAG, "receive failed: errno %d, task %s", errno, args->taskname);
                 break;
             }
             else {
-                ESP_LOGI(TAG, "recieved %d bytes, task %s", received_len, args->taskname);
                 args->callback(rx_buffer, received_len);
             }
         }
 
-        ESP_LOGE(TAG, "Shutting down socket and restarting (task %s)", args->taskname);
+        LOGE(TAG, "Shutting down socket and restarting (task %s)", args->taskname);
         shutdown(sock, 0);
         close(sock);
     }
 
-    ESP_LOGE(TAG, "Major error in task %s; aborting", args->taskname);
+    LOGE(TAG, "Major error in task %s; aborting", args->taskname);
     vTaskDelete(NULL);
 }
 
@@ -106,49 +107,44 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
         int err = getaddrinfo(server, "80", &hints, &res);
 
         if(err != 0 || res == NULL) {
-            ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
+            LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             continue;
         }
 
         sock = socket(res->ai_family, res->ai_socktype, 0);
         if(sock < 0) {
-            ESP_LOGE(TAG, "... Failed to allocate socket.");
+            LOGE(TAG, "... Failed to allocate socket.");
             freeaddrinfo(res);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             continue;
         }
-        ESP_LOGI(TAG, "... allocated socket");
 
         if(connect(sock, res->ai_addr, res->ai_addrlen) != 0) {
-            ESP_LOGE(TAG, "... socket connect failed errno=%d", errno);
+            LOGE(TAG, "... socket connect failed errno=%d", errno);
             close(sock);
             freeaddrinfo(res);
             vTaskDelay(4000 / portTICK_PERIOD_MS);
             continue;
         }
-
-        ESP_LOGI(TAG, "... connected");
         freeaddrinfo(res);
 
         sprintf(buf, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", path, server);
-        ESP_LOGI(TAG, "request:\n%s", buf);
+        LOGI(TAG, "request message:\n%s", buf);
         if (write(sock, buf, strlen(buf)) < 0) {
-            ESP_LOGE(TAG, "... socket send failed");
+            LOGE(TAG, "... socket send failed");
             close(sock);
             vTaskDelay(4000 / portTICK_PERIOD_MS);
             continue;
         }
-        ESP_LOGI(TAG, "... socket send success");
 
         struct timeval receiving_timeout = { .tv_sec = 5 };
         if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout, sizeof(receiving_timeout)) < 0) {
-            ESP_LOGE(TAG, "... failed to set socket receiving timeout");
+            LOGE(TAG, "... failed to set socket receiving timeout");
             close(sock);
             vTaskDelay(4000 / portTICK_PERIOD_MS);
             continue;
         }
-        ESP_LOGI(TAG, "... set socket receiving timeout success");
 
         /* Read network response */
         int i = 0, copy_len, r;
@@ -157,7 +153,7 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
         do {
             bzero(buf, sizeof(buf));
             r = read(sock, buf, recv_len);
-            ESP_LOGI(TAG, "... read %d", r);
+            ESP_LOGD(TAG, "... read %d", r);
             if (r > 0) {
                 copy_len = ( i+r<fb_len ? r : fb_len-i-1 );
                 strncpy(fill_buffer+i, buf, copy_len);
@@ -166,7 +162,7 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
         } while(r > 0 && i < fb_len);
         fill_buffer[i] = 0;
 
-        ESP_LOGI(TAG, "... done reading from socket. read %d, errno %d.", i, errno);
+        LOGI(TAG, "... done reading from socket. read %d, errno %d.", i, errno);
         close(sock);
         break;
     }
@@ -181,7 +177,9 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
 int broadcast_socket = -1;
 struct sockaddr_in broadcast_dest;
 
-void broadcast_message(char *message) {
+void broadcast_message(const char *message) {
+    // DO NOT USE OUR LOG MACROS HERE (or you will be in recursive hell...)
+
     // initialize socket, if needed
     if (broadcast_socket < 0) {
         int optval = 1;
@@ -210,4 +208,20 @@ void broadcast_message(char *message) {
         close(broadcast_socket);
         broadcast_socket = -1;
     }
+}
+
+/*
+ * Formatting version of broadcast message
+ */
+void broadcast_messagef(const char *fmt, ...) {
+
+    char message[2048];
+
+    // handle the requested formatting first.
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(message, sizeof message, fmt, args);
+    va_end(args);
+
+    broadcast_message(message);
 }

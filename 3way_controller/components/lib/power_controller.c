@@ -45,7 +45,7 @@ void set_power_level(char *level) {
             power_level = power_high;
         }
         else {
-            ESP_LOGW(TAG, "Ignoring unrecognized power level %s", level);
+            LOGW(TAG, "Ignoring unrecognized power level %s", level);
             power_override = 0;       
         }
     }
@@ -62,34 +62,34 @@ void power_controller_loop() {
         desired_temp = current_desired_temperature();
         actual_temp = current_ambient_temperature();
         heater_temp = current_heater_temperature();
-        ESP_LOGI(TAG,"Desired temp %f, actual %f, heater %f", desired_temp, actual_temp, heater_temp);
+        LOGI(TAG,"Desired temp %f, actual %f, heater %f", desired_temp, actual_temp, heater_temp);
         
         if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
-            ESP_LOGW(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
+            LOGW(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
             power_level = power_off;
         }
         else if ( power_override ) {
-            ESP_LOGI(TAG, "Using assigned power level %d", power_level);
+            LOGI(TAG, "Using assigned power level %d", power_level);
         }
         else if ( NO_T_VALUE(desired_temp) || NO_T_VALUE(actual_temp) ) {      
-            ESP_LOGI(TAG, "Flying blind; maintain behavior: %d", power_level);
+            LOGI(TAG, "Flying blind; maintain behavior: %d", power_level);
         }
 
         // temporary logic; we expect we can do better than this
         else if ( actual_temp > desired_temp ) {
-            ESP_LOGI(TAG, "Too warm; turn off");
+            LOGI(TAG, "Too warm; turn off");
             power_level = power_off;
         }
         else if ( desired_temp - actual_temp <= 2 ) {
-            ESP_LOGI(TAG, "Just a little please");
+            LOGI(TAG, "Just a little please");
             power_level = power_low;
         }
         else if ( desired_temp - actual_temp <= 5 ) {
-            ESP_LOGI(TAG, "Medium");
+            LOGI(TAG, "Medium");
             power_level = power_medium;
         }
         else {
-            ESP_LOGI(TAG,"Full blast!");
+            LOGI(TAG,"Full blast!");
             power_level = power_high;
         }
 

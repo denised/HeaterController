@@ -19,13 +19,13 @@ void set_temperature_schedule( int *new_temps ) {
     for(int i=0; i<24; i++) {
         int nt = new_temps[i];
         if ( nt < 10 || nt > 30 ) {
-            ESP_LOGE(TAG,"Temperature target %d out of bounds; ignoring", nt);
+            LOGE(TAG,"Temperature target %d out of bounds; ignoring", nt);
         }
         else {
             temp_targets[i] = nt;
         }
     }
-    ESP_LOGI(TAG,"Temperature targets updated");
+    LOGI(TAG,"Temperature targets updated");
 }
 
 void bump_temperature(int increment, int hours) {
@@ -36,7 +36,7 @@ void bump_temperature(int increment, int hours) {
     // Non-intuitive, but useful, so I'm leaving it that way.
     // esp_timer tells time in *microseconds*.
     override_until = esp_timer_get_time() + (hours * 1000 * 1000 * 60 * 60);
-    ESP_LOGI(TAG,"Bumped temperature from %f to %f until %lld", current_target, override_temp, override_until);
+    LOGI(TAG,"Bumped temperature from %f to %f until %lld", current_target, override_temp, override_until);
 }
 
 float current_desired_temperature() {
