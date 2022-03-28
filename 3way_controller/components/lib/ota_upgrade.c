@@ -76,9 +76,6 @@ void ota_upgrade(const char *ipaddr, int expected_len)
         goto cleanup;
     }
 
-    shutdown(sock, 0);
-    close(sock);
-
     err = esp_ota_end(update_handle);
     if (err != ESP_OK) {
         if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
@@ -86,13 +83,13 @@ void ota_upgrade(const char *ipaddr, int expected_len)
         } else {
             LOGE(TAG, "esp_ota_end failed (%s)!", esp_err_to_name(err));
         }
-        return;
+        goto cleanup;
     }
 
     err = esp_ota_set_boot_partition(update_partition);
     if (err != ESP_OK) {
         LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(err));
-        return;
+        goto cleanup;
     }
 
     // Success!

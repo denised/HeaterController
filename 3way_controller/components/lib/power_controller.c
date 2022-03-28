@@ -113,7 +113,7 @@ void power_controller_loop() {
         }
         
         // Delay, in milliseconds.
-        vTaskDelay(HEATER_UPDATE_FREQUENCY / portTICK_PERIOD_MS);
+        vTaskDelay(HEATER_UPDATE_INTERVAL / portTICK_PERIOD_MS);
     }
 
     vTaskDelete(NULL);

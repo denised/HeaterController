@@ -7,10 +7,7 @@
 #include "libdecls.h"
 
 static const char *TAG = "main";
-
-const char *get_version() {
-    return "Look it ma, no hands!";
-}
+const char *version_string = "Checking bump";
 
 void app_main(void)
 {
@@ -33,18 +30,18 @@ void app_main(void)
         ESP_LOGE(TAG,"Wifi connection failed!");
     }
 
-    // I change this message every time I want to be able to tell that
-    // the new code has been loaded....this is my "version number"
-    LOGI(TAG, "%s", get_version());
+    LOGI(TAG, "%s", version_string);
 
     // Initialize our code
     init_time();
     init_temps();
     init_console();
+    init_broadcast_loop();
 
     // ...and go!
     power_controller_start();
 
     LOGI(TAG, "%s", "...Booting complete");
+    vTaskDelete(NULL);
 }
 

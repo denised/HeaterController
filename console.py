@@ -16,6 +16,9 @@ heater_control_port = 3337
 heater_broadcast_port = 3341
 ota_port = 3343
 
+# TODO: listen for the heater's broadcast and remember its address instead of braodcasting?
+heater_ip = '10.0.0.255'
+
 currdir = Path(__file__).parent
 heaterbinary = currdir/"3way_controller/build/3way_controller.bin"
 
@@ -38,11 +41,15 @@ def start_upload(path: Path):
     sender.listen()
     with sender:
         conn, _ = sender.accept()
-        print("Upload connection accepted")
+        print("Upload connection accepted.\n. ")
         with conn:
             with open(str(path), mode='rb') as f:
-                cnt = conn.sendfile(f)
-                print(f"Send {cnt} bytes; closing connection")
+                try:
+                    conn.sendfile(f)
+                except ConnectionResetError:
+                    # this happens when the device reboots.
+                    pass
+                print("Upload completed.\n. ")
 
 
 if __name__ == "__main__":
@@ -61,12 +68,13 @@ if __name__ == "__main__":
         if cmd in ["?","help", "h"]:
             print("""
             hello:  heater responds with udp message
+            version: respond with version id
             level off|low|medium|high|auto: set heater level
             bump amount, duration: increase/decrease the desired temperature by
                   amount degrees for duration hours
             schedule temp{1:24}  set an hourly schedule for desired temps.  If the
                   schedule is less than 24 hours long, the last value is repeated.
-            update filename: upgrade the sofware
+            update: upgrade to the current version in the build directory
             reboot: tell the heater to reboot itself [TODO]
             report: [TODO]
             """)
@@ -84,9 +92,9 @@ if __name__ == "__main__":
                 # in that case, replace with the code indicated here: https://stackoverflow.com/a/28950776
                 myip = socket.gethostbyname(socket.gethostname())
                 outcommand = f"update {myip} {filelen}"
-                broadcaster.sendto(outcommand.encode(), ('10.0.0.255', heater_control_port))
+                broadcaster.sendto(outcommand.encode(), (heater_ip, heater_control_port))
                 print(f"sent {outcommand}")
         else:
-            broadcaster.sendto(cmd.encode(), ('10.0.0.255', heater_control_port))
+            broadcaster.sendto(cmd.encode(), (heater_ip, heater_control_port))
             print(f"sent {cmd}")
  

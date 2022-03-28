@@ -28,7 +28,7 @@ int recieve_command(void *buf, int len) {
         broadcast_message("hello back");
     }
     else if ( strcmp(cmd, "version") == 0 ) {
-        broadcast_message(get_version());
+        broadcast_message(version_string);
     }
     else if ( strcmp(cmd, "level") == 0 ) {
         if (argcheck(1, nargs)) {
@@ -39,6 +39,8 @@ int recieve_command(void *buf, int len) {
         if (argcheck(2, nargs) ) {
             int amount = atoi(args[1]);
             int duration = atoi(args[2]);
+            ESP_LOGI(TAG,"Args were %s and %s", args[1], args[2]);
+            broadcast_messagef("Temperature bumped by %d for %d", amount, duration);
             bump_temperature(amount, duration);
         }
     }
@@ -65,7 +67,8 @@ int recieve_command(void *buf, int len) {
         }
     }
     else if ( strcmp(cmd, "reboot") == 0 ) {
-        // TODO
+        broadcast_message("Rebooting now...");
+        esp_restart();
     }
     else if ( strcmp(cmd, "report") == 0 ) {
         // TODO

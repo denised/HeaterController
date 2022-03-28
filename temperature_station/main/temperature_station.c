@@ -93,7 +93,6 @@ static void temperature_station(void *pvParameters)
         // if the socket breaks, shut down and restart.
         if (sock != -1) {
             ESP_LOGE(TAG, "Shutting down socket and restarting...");
-            shutdown(sock, 0);
             close(sock);
         }
     }

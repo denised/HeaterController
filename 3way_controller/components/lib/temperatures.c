@@ -8,24 +8,19 @@
 #include "libconfig.h"
 #include "libdecls.h"
 
-// We sense three different temperatures, using different methods:
+// We sense two different temperatures, using different methods:
 // * The ambient temperature is the household temperature somewhat distant from the heater, read from a 
 //   remote temperature sensor that broadcasts on WIFI.
 // * The heater temperature is the temperature of the heater itself, reflective of how hot the oil is, 
 //   is read from an onboard temperature sensor.
-// * The outdoor temperature is fetched from the internet.
 //
-// For the two non-local temperatures, we keep track of how old the data is, and discard it if it is
-// too old.
+// For the ambient temperature, we keep track of how old the data is, and discard it if it is too old.
 
 
 static char *TAG = "temps";
 
 static float ambient_store = NO_TEMP_VALUE;
 static int64_t ambient_timestamp = 0;
-
-//static float outside_store = NO_TEMP_VALUE;
-//static int64_t outside_timestamp = 0;
 
 // Ambient temperature
 
@@ -34,7 +29,7 @@ float current_ambient_temperature() {
     int64_t current_time = esp_timer_get_time();
     int64_t ts_delta = current_time - ambient_timestamp;
 
-    if (ts_delta > READ_LIFETIME) {
+    if (ts_delta > READ_LIFETIME*1000) {
         int mins = ts_delta / (1000*1000*60);
         ESP_LOGW(TAG,"Stored temp %d out of date by %d minutes", current_time, mins);
         return NO_TEMP_VALUE;
@@ -72,11 +67,10 @@ int receive_ambient_temperature(void *buf, int len) {
 
 // Heater temperature
 //
-// Right now we are going to try using the onboard thermometer of the esp32c chip itself.
+// Use the onboard thermometer of the esp32c chip itself.
 // This will give us a temperature reading "near" the heater.
 // The main intent is to prevent the heater from being so hot that it will be a burn hazard.
-// Whether we can use this sensor for this is TBD.
-
+//
 // See https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/api-reference/peripherals/temp_sensor.html
 // And {$IDF_SRC}/examples/peripherals/temp_sensor
 
@@ -94,12 +88,6 @@ float current_heater_temperature() {
     }
 }
 
-// Outside temperature
-
-float current_outside_temperature() {
-    // TODO
-    return NO_TEMP_VALUE;
-}
 
 
 // Do all initialization required.

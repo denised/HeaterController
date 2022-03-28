@@ -22,8 +22,9 @@
 
 /*
  * Listener: Perpetually listen for incoming UDP connections on a specified port.  
- * This should be the last call made on an independent task.
- * The caller must provide a single to handle the messages received.
+ * This function is parameterized by a callback that actually handles the data received,
+ * and it runs as a task loop (so it should be the last thing called in an independent
+ * vTask)
  */
 
 struct argsholder {
@@ -69,8 +70,7 @@ void listener_loop(struct argsholder *args) {
             }
         }
 
-        LOGE(TAG, "Shutting down socket and restarting (task %s)", args->taskname);
-        shutdown(sock, 0);
+        LOGW(TAG, "Shutting down socket and restarting (task %s)", args->taskname);
         close(sock);
     }
 
@@ -121,7 +121,7 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
         }
 
         if(connect(sock, res->ai_addr, res->ai_addrlen) != 0) {
-            LOGE(TAG, "... socket connect failed errno=%d", errno);
+            LOGE(TAG, "... socket connect failed errno %d", errno);
             close(sock);
             freeaddrinfo(res);
             vTaskDelay(4000 / portTICK_PERIOD_MS);
@@ -169,59 +169,129 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
 }
 
 /* 
- * Send a message on the broadcast port.  This activity operates inline (i.e. will block).
- * There's a potential race condition if multiple callers tried to broadcast before the socket
- * is initialized, but the result is probably(?) harmless.
+ * Send a message on the broadcast port.  Initially the message is just queued to
+ * send.  A separate task handles the actual sending.  This enables all tasks to
+ * send on the same socket and port.
  */
 
-int broadcast_socket = -1;
-struct sockaddr_in broadcast_dest;
+// DO NOT USE OUR LOG MACROS IN THIS SECTION OF CODE (or you will be in recursive hell...)
 
+
+const char *mq1[BROADCAST_QUEUE_SIZE];
+const char *mq2[BROADCAST_QUEUE_SIZE];
+const char **message_queue = mq1;
+int mqi = 0;
+int mq_wrapped = 0;
+
+
+/*
+ * Broadcast message on broadcast port.
+ * This function actually only enqueues the message to be sent later.
+ */
 void broadcast_message(const char *message) {
-    // DO NOT USE OUR LOG MACROS HERE (or you will be in recursive hell...)
 
-    // initialize socket, if needed
-    if (broadcast_socket < 0) {
-        int optval = 1;
-        broadcast_dest.sin_addr.s_addr = inet_addr(BROADCAST_IP_ADDR);
-        broadcast_dest.sin_family = AF_INET;
-        broadcast_dest.sin_port = htons(BROADCAST_PORT);
-
-        int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create broadcast socket: errno %d", errno);
-            return;
-        }
-        if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &optval, sizeof optval) < 0) {
-            ESP_LOGE(TAG, "Error setting port to broadcast");
-            shutdown(sock, 0);
-            close(sock);
-            return;
-        }
-        broadcast_socket = sock;
+    // Fill queue in round robin fashion
+    if (mqi == BROADCAST_QUEUE_SIZE) {
+        mqi = 0;
+        mq_wrapped = 1;
     }
-
-    // do the actual broadcast
-    if (sendto(broadcast_socket, message, strlen(message), 0, (struct sockaddr *)&broadcast_dest, sizeof(broadcast_dest)) < 0) {
-        ESP_LOGE(TAG, "Error occurred during broadcast: errno %d", errno);
-        shutdown(broadcast_socket, 0);
-        close(broadcast_socket);
-        broadcast_socket = -1;
-    }
+    message_queue[mqi++] = message;
 }
 
 /*
- * Formatting version of broadcast message
+ * Formatting version
  */
 void broadcast_messagef(const char *fmt, ...) {
 
-    char message[2048];
-
-    // handle the requested formatting first.
+    char message[1024];
     va_list args;
     va_start(args, fmt);
     vsnprintf(message, sizeof message, fmt, args);
     va_end(args);
-
     broadcast_message(message);
+}
+
+
+/*
+ * This is the function that actually takes the queued messages and sends
+ * them;  Called from within broadcaster_loop.
+ * Returns a negative value if something bad happens.
+ */
+int send_queue(int sock, struct sockaddr_in *sa) {
+
+    // Check if we have anything to send
+    if ( mqi > 0 || mq_wrapped ) {
+
+        // get our own copy of the queue and counters
+        int i, slen, mqtop = (mq_wrapped ? BROADCAST_QUEUE_SIZE : mqi);
+        const char **queue = message_queue;
+        
+        // Swap the queues so any new messages come in on the other queue.
+        // We aren't worried about mutex here because FreeRTOS won't interrupt
+        // us until we block.
+        message_queue = (queue == mq1 ? mq2 : mq1);
+        mqi = 0;
+        mq_wrapped = 0;
+
+        ESP_LOGI(TAG, "Sending %d messages", mqtop);
+        for(i=0; i<mqtop; i++) {
+            slen = sendto(sock, queue[i], strlen(queue[i]), 0, (struct sockaddr *)sa, sizeof(struct sockaddr_in));
+            if (slen < 0) {
+                ESP_LOGE(TAG, "Error occurred during broadcast: errno %d", errno);
+                return slen;
+            }
+        }
+    }
+    return 0;
+}
+
+
+
+// This can be dynamically modified
+int broadcast_interval = (5 * 1000);
+
+
+/* 
+ * This behaves just like the listener loop, except that it is a sender,
+ * and the action is hard-wired, not parameterizable.
+ */
+void broadcast_loop() {
+    int sock;
+    int ret, optval = 1;
+    struct sockaddr_in addr = {
+            .sin_family = AF_INET,
+            .sin_port = htons(BROADCAST_PORT),
+            .sin_addr.s_addr = inet_addr(BROADCAST_IP_ADDR)
+        };
+
+    while (1) {
+        // initialize socket
+        sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+        if (sock < 0) {
+            ESP_LOGE(TAG, "Unable to create broadcast socket: errno %d", errno);
+            break;
+        }
+        if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &optval, sizeof optval) < 0) {
+            ESP_LOGE(TAG, "Error setting broadcast mode: errno %d", errno);
+            break;
+        }
+
+        // use socket until it breaks
+        // note if it breaks in the middle of a queue, we'll loose some messages;
+        // ok for now
+        do {
+            vTaskDelay(broadcast_interval  / portTICK_PERIOD_MS);
+            ret = send_queue(sock, &addr);
+        } while (ret >= 0);
+
+        ESP_LOGI(TAG, "Shutting down broadcast socket and restarting");
+        close(sock);
+    }
+
+    ESP_LOGE(TAG, "Major error in broadcast_loop; aborting");
+    vTaskDelete(NULL);
+}
+
+void init_broadcast_loop() {
+    xTaskCreate(broadcast_loop, "broadcast_loop", 4096, NULL, 5, NULL);    
 }
