@@ -19,9 +19,13 @@ int recieve_command(void *buf, int len) {
     char *args[30];
     char *cbuf = (char *)buf;
     cbuf[len] = 0;
-    LOGI(TAG, "Received command %s", cbuf);
+    LOGI(TAG, "Received command |%s|", cbuf);
 
     int nargs = split_string(buf, args, 30);
+    if (nargs == 0) {
+        LOGI(TAG,"Empty command ignored");
+        return 0;
+    }
 
     char *cmd = args[0];
     if ( strcmp(cmd, "hello") == 0 ) {
@@ -39,8 +43,6 @@ int recieve_command(void *buf, int len) {
         if (argcheck(2, nargs) ) {
             int amount = atoi(args[1]);
             int duration = atoi(args[2]);
-            ESP_LOGI(TAG,"Args were %s and %s", args[1], args[2]);
-            broadcast_messagef("Temperature bumped by %d for %d", amount, duration);
             bump_temperature(amount, duration);
         }
     }

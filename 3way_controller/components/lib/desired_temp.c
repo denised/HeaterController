@@ -31,12 +31,12 @@ void set_temperature_schedule( int *new_temps ) {
 void bump_temperature(int increment, int hours) {
     // Note that multiple bumps are additive.
     float current_target = current_desired_temperature();
-    override_temp = current_target + increment;
+    override_temp = (int)(current_target + increment);
     // Note if hours <= 0, the effect will be to restore the regular schedule.
     // Non-intuitive, but useful, so I'm leaving it that way.
     // esp_timer tells time in *microseconds*.
-    override_until = esp_timer_get_time() + (hours * 1000 * 1000 * 60 * 60);
-    LOGI(TAG,"Bumped temperature from %f to %f until %lld", current_target, override_temp, override_until);
+    override_until = esp_timer_get_time() + ((int64_t)hours * 1000 * 1000 * 60 * 60);
+    LOGI(TAG,"Bumped temperature from %f to %d until %lld", current_target, override_temp, override_until);
 }
 
 float current_desired_temperature() {

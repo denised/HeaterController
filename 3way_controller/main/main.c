@@ -7,7 +7,7 @@
 #include "libdecls.h"
 
 static const char *TAG = "main";
-const char *version_string = "Networking done right";
+const char *version_string = "Bumpity bump";
 
 void app_main(void)
 {
