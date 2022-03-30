@@ -1,5 +1,9 @@
-extern const char *version_string;
-extern int broadcast_interval;
+extern const char *version_string;      // main.c
+extern int broadcast_interval;          // network.c; configurable interval for broadcast messages
+
+// read/write persistent storage values
+char *get_psv(const char *key);
+void set_psv(const char *key, const char *newval);
 
 // Time of day (we only need the hour)
 void init_time();
@@ -11,9 +15,11 @@ float current_heater_temperature();
 void init_temps();
 
 // temperature setting
-void set_temperature_schedule(int *temps);
+void init_temperature_schedule();
+void set_temperature_schedule(const char *sched);
 void bump_temperature(int increment, int hours);
 float current_desired_temperature();
+void report_temperature_schedule();
 
 // command listener
 void init_console();
