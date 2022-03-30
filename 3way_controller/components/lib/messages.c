@@ -213,8 +213,8 @@ void enqueue_rrqueue(struct rrqueue *q, const char *message) {
         if (len >= MESSAGE_LEN) {
             len = MESSAGE_LEN - 1;
         }
+        
         char *mptr = q->fill + (q->i)*MESSAGE_LEN;
-
         memcpy( mptr, message, len );
         *(mptr + len) = 0; // null terminate string
         

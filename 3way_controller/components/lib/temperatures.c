@@ -29,7 +29,7 @@ float current_ambient_temperature() {
     int64_t current_time = esp_timer_get_time();
     int64_t ts_delta = current_time - ambient_timestamp;
 
-    if (ts_delta > READ_LIFETIME*1000) {
+    if (ts_delta > READ_LIFETIME*1000LL) {
         int mins = ts_delta / (1000*1000*60);
         ESP_LOGW(TAG,"Stored temp %d out of date by %d minutes", current_time, mins);
         return NO_TEMP_VALUE;
@@ -82,10 +82,6 @@ float current_heater_temperature() {
         LOGE(TAG, "Unable to read heater temperature");
         return NO_TEMP_VALUE;
     }
-    else {
-        LOGI(TAG,"Heater temperature is %f", val);
-        return val;
-    }
 }
 
 
@@ -95,11 +91,10 @@ float current_heater_temperature() {
 void init_temps() {
     // ambient listener/updater
     listener_task("ambient", TEMPERATURE_PORT, receive_ambient_temperature);
-    esp_err_t err;
-    
+
     // onboard sensor
     temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
-    err = temp_sensor_set_config(temp_sensor);
+    esp_err_t err = temp_sensor_set_config(temp_sensor);
     if (err != ESP_OK) {
         LOGE(TAG, "temp sensor config failed (%s)", esp_err_to_name(err));
     }

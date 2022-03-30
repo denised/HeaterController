@@ -72,11 +72,11 @@ if __name__ == "__main__":
             level off|low|medium|high|auto: set heater level
             bump amount, duration: increase/decrease the desired temperature by
                   amount degrees for duration hours
-            schedule temp{1:24}  set an hourly schedule for desired temps.  If the
+            schedule <n>,<n>...:  set an hourly schedule for desired temps.  If the
                   schedule is less than 24 hours long, the last value is repeated.
             update: upgrade to the current version in the build directory
-            reboot: tell the heater to reboot itself [TODO]
-            report: [TODO]
+            reboot: tell the heater to reboot itself
+            report: list useful info
             """)
         elif cmd.startswith("up"):
             # Currently hardwiring the path.  If we need to handle multiple binaries, will have to modify.
