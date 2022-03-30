@@ -17,16 +17,8 @@
 // Address to brodcast to; usually this would be an "all" address
 #define BROADCAST_IP_ADDR "10.0.0.255"
 
-
-// Maximum number of messages to queue for broadcast
-#define BROADCAST_QUEUE_SIZE 32
-
-// Maximum length of messages to be broadcast
-#define BROADCAST_MESSAGE_LEN 256
-
-// Note: the message buffers are pre-allocated, requiring a block of
-// 2 * BROADCAST_QUEUE_SIZE * BROADCAST_QUEUE_LEN  characters
-
+// Frequency with which to broadcast messages, in milliseconds
+#define BROADCAST_INTERVAL (5*1000)
 
 // Pin used to drive the lower wattage heater element
 #define LWATT_PIN 6
@@ -51,3 +43,13 @@
 
 // Frequency with which to check and update the heater control, in milliseconds
 #define HEATER_UPDATE_INTERVAL (30*1000)
+
+
+// Maximum number of errors/messages to queue
+#define MESSAGE_QUEUE_SIZE 32
+
+// Maximum length of messages
+#define MESSAGE_LEN 256
+
+// Note: the message buffers are pre-allocated, requiring a total of
+// 4 * MESSAGE_QUEUE_SIZE * MESSAGE_LEN  characters

@@ -57,7 +57,7 @@ void set_temperature_schedule( const char *sched ) {
     LOGI(TAG,"parsing |%s|", sched);
     int ret = parse_temperature_values( sched, temp_targets );
     if ( ret < 0 ) {
-        LOGW(TAG, "Malformed temperature schedule |%s| (token %d)", sched, -(ret-1));
+        LOGI(TAG, "Malformed temperature schedule |%s| (token %d)", sched, -(ret-1));
     }
     else {
         LOGI(TAG, "Temperature schedule updated");
@@ -79,23 +79,30 @@ void report_temperature_schedule() {
     // debugging routine so we can see what the actual schedule is.
     for(int i = 0; i < 4; i++) {
         int j = i*6;
-        broadcast_messagef("schedule %d %d %d %d %d %d", 
+        send_messagef(0,"schedule %d %d %d %d %d %d", 
             temp_targets[j], temp_targets[j+1], temp_targets[j+2],
             temp_targets[j+3], temp_targets[j+4], temp_targets[j+5]);
     }
 }
 
+/*
+ * Temporarily modify the schedule.  For the next n hours, set the desired temperature
+ * to the current temp + increment (which may be positive or negative).
+ * Multiple bumps are additive.
+ * An hour value of 0 or less will remove all current bumps.
+ */
 void bump_temperature(int increment, int hours) {
-    // Note that multiple bumps are additive.
     float current_target = current_desired_temperature();
     override_temp = (int)(current_target + increment);
-    // Note if hours <= 0, the effect will be to restore the regular schedule.
-    // Non-intuitive, but useful, so I'm leaving it that way.
     // esp_timer tells time in *microseconds*.
     override_until = esp_timer_get_time() + ((int64_t)hours * 1000 * 1000 * 60 * 60);
     LOGI(TAG,"Bumped temperature from %f to %d until %lld", current_target, override_temp, override_until);
 }
 
+
+/*
+ * Combine the schedule and any current override to determine what temperature we want right now.
+ */
 float current_desired_temperature() {
     if (override_until) {
         if (esp_timer_get_time() < override_until) {

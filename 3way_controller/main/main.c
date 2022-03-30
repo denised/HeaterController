@@ -8,7 +8,7 @@
 #include "libdecls.h"
 
 static const char *TAG = "main";
-const char *version_string = "Parsing strings is hard to do";
+const char *version_string = "Errors on the run";
 nvs_handle_t storage_handle;
 
 void app_main(void)
@@ -31,7 +31,7 @@ void app_main(void)
     // If the connect fails, the rest of the code will continue to function
     // in a default mode.
     if (example_connect() != ESP_OK) {
-        ESP_LOGE(TAG,"Wifi connection failed!");
+        LOGE(TAG,"Wifi connection failed!");
     }
 
     LOGI(TAG, "%s", version_string);

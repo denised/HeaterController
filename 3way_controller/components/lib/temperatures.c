@@ -79,7 +79,7 @@ float current_heater_temperature() {
     int err;
     err = temp_sensor_read_celsius(&val);
     if (err) {
-        LOGW(TAG, "Unable to read heater temperature");
+        LOGE(TAG, "Unable to read heater temperature");
         return NO_TEMP_VALUE;
     }
     else {

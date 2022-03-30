@@ -1,5 +1,4 @@
 extern const char *version_string;      // main.c
-extern int broadcast_interval;          // network.c; configurable interval for broadcast messages
 
 // read/write persistent storage values
 char *get_psv(const char *key);
@@ -35,20 +34,26 @@ void ota_check();
 // Network actions
 void listener_task(const char *taskname, int port, int callback(void *, int));
 void get_internet_data(const char *server, const char *path, char *fill_buffer, int fb_len);
-void broadcast_message(const char *message);
-void broadcast_messagef(const char *fmt, ...);
 void init_broadcast_loop();
 
-// duplicating esp logging so we can also broadcast it
+
+// message and error management
+void send_message(int severity,const char *message);
+void send_messagef(int severity,const char *fmt, ...);
+int process_message_queue(int sock, void *sa);
+int current_error_count();
+void report_errors();
+
+// duplicating ESP logging so we can also send and log it
 #define LOGE(tag,...) \
     ESP_LOGE(tag,__VA_ARGS__); \
-    broadcast_messagef(__VA_ARGS__);
+    send_messagef(2,__VA_ARGS__);
 
 #define LOGW(tag,...) \
     ESP_LOGW(tag,__VA_ARGS__); \
-    broadcast_messagef(__VA_ARGS__);
+    send_messagef(1,__VA_ARGS__);
 
 #define LOGI(tag,...) \
     ESP_LOGI(tag,__VA_ARGS__); \
-    broadcast_messagef(__VA_ARGS__);
+    send_messagef(0,__VA_ARGS__);
 

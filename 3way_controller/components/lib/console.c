@@ -33,10 +33,10 @@ int recieve_command(void *buf, int len) {
     }
 
     if ( strcmp(cmd, "hello") == 0 ) {
-        broadcast_message("hello back");
+        send_message(0,"hello back");
     }
     else if ( strcmp(cmd, "version") == 0 ) {
-        broadcast_message(version_string);
+        send_message(0,version_string);
     }
     else if ( strcmp(cmd, "level") == 0 ) {
         set_power_level( args );
@@ -48,7 +48,7 @@ int recieve_command(void *buf, int len) {
             bump_temperature(amount, duration);
         }
         else {
-            LOGW(TAG,"Malformed bump command? |%s|", args);
+            LOGI(TAG,"Malformed bump command? |%s|", args);
         }
     }
     else if ( strcmp(cmd, "update") == 0 ) {
@@ -59,22 +59,29 @@ int recieve_command(void *buf, int len) {
             ota_upgrade(addr, len);
         }
         else {
-            LOGW(TAG,"Malformed update command? |%s|", args);
+            LOGI(TAG,"Malformed update command? |%s|", args);
         }
     }
     else if ( strcmp(cmd, "schedule") == 0 ) {
         set_temperature_schedule(args);
     }
     else if ( strcmp(cmd, "reboot") == 0 ) {
-        broadcast_message("Rebooting now...");
+        send_message(0,"Rebooting now...");
         esp_restart();
     }
     else if ( strcmp(cmd, "report") == 0 ) {
+        send_messagef(0, "Errors since boot: %d", current_error_count());
+        report_errors();
         report_temperature_schedule();
-        // TODO: report other things too.
+    }
+    else if ( strcmp(cmd, "errtest") == 0 ) {
+        // Generate a bunch of errors so we can see the behavior of the error handler
+        for(int i=0; i<100; i++) {
+            LOGE(TAG,"Test error %d", i);
+        }
     }
     else {
-        LOGW(TAG, "Unrecognized command %s", cmd);
+        LOGI(TAG, "Unrecognized command %s", cmd);
     }
 
     return 0;

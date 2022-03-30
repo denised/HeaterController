@@ -45,7 +45,7 @@ void set_power_level(char *level) {
             power_level = power_high;
         }
         else {
-            LOGW(TAG, "Ignoring unrecognized power level %s", level);
+            LOGI(TAG, "Ignoring unrecognized power level %s", level);
             power_override = 0;       
         }
     }
@@ -65,7 +65,7 @@ void power_controller_loop() {
         LOGI(TAG,"Desired temp %f, actual %f, heater %f", desired_temp, actual_temp, heater_temp);
         
         if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
-            LOGW(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
+            LOGI(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
             power_level = power_off;
         }
         else if ( power_override ) {

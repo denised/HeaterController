@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include "esp_log.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
@@ -169,134 +168,6 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
 }
 
 /* 
- * Send a message on the broadcast port.  Initially the message is just queued to
- * send.  A separate task handles the actual sending.  Messages are limited
- * to BROADCAST_MESSAGE_LEN in size.
- * 
- * Implementation Notes:
- * 
- * The reason for the queue/send design is so that only a single task has access
- * to the actual socket (since sockets/ports cannot be shared across tasks).
- * 
- * There are two queues so that one is always available to other tasks,
- * while the other might be in process with the broadcast loop below.
- * 
- * We don't worry about mutex issues regarding access to the queues because this
- * is an RT system which won't switch tasks until they block, and all the queue
- * manipulation is non-blocking.
- * 
- * If a queue would overflow before the broadcast loop gets to it, we start 
- * filling it round-robin (newer messages overwrite older ones).  Messages can
- * get lost that way.   If that happens in practice, increase the queue size or
- * decrease the broadcast loop interval.
- * 
- * The round-robin handling is also why we copy messages into a fixed block
- * of messages rather than allocating messages individually --- this way we don't
- * have to handle de-allocation and/or potential leaks.
- *
- * I chose to do my own pointer arithmetic because I find it easier to read than
- * trying to do the correct casts on 2-D arrays.  Hence the single block
- * of characters for each queue.  YMMV.
- * 
- */
-
-static char mq1[BROADCAST_QUEUE_SIZE * BROADCAST_MESSAGE_LEN];
-static char mq2[BROADCAST_QUEUE_SIZE * BROADCAST_MESSAGE_LEN];
-static char *filling_queue = mq1;     // current queue to fill
-static int mqi = 0;        // current open slot in filling queue
-static int mq_wrapped = 0; // have we started round-robining yet?
-
-
-/*
- * Broadcast message on broadcast port.
- * This function actually only enqueues the message to be sent later.
- */
-void broadcast_message(const char *message) {
-
-    // Round robin if necessary
-    if (mqi == BROADCAST_QUEUE_SIZE) {
-        mqi = 0;
-        mq_wrapped = 1;
-    }
-    int len = strlen(message);
-    if (len >= BROADCAST_MESSAGE_LEN) {
-        len = BROADCAST_MESSAGE_LEN - 1;
-    }
-    int offset = mqi*BROADCAST_MESSAGE_LEN;
-
-    memcpy( filling_queue+offset, message, len );
-    *(filling_queue + offset + len) = 0; // null terminate string
-    
-    mqi++;
-}
-
-/*
- * Formatting version
- */
-void broadcast_messagef(const char *fmt, ...) {
-
-    if (mqi == BROADCAST_QUEUE_SIZE) {
-        mqi = 0;
-        mq_wrapped = 1;
-    }
-    int offset = mqi*BROADCAST_MESSAGE_LEN;
-
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf( filling_queue+offset, BROADCAST_MESSAGE_LEN, fmt, args );
-    va_end(args);
-    
-    mqi++;
-}
-
-
-/*
- * This is the function that actually takes the queued messages and sends
- * them;  Called from within broadcaster_loop.
- * Returns a negative value if something bad happens.
- */
-int send_queue(int sock, struct sockaddr_in *sa) {
-
-    // Check if we have anything to do at all
-    if ( mqi > 0 || mq_wrapped ) {
-
-        // get our own copy of the queue and counters
-        int i, slen, mqtop = (mq_wrapped ? BROADCAST_QUEUE_SIZE : mqi);
-        int didoverflow = mq_wrapped;
-        char *processing_queue = filling_queue, *msg;
-
-        // Swap the queues so any new messages come in on the other queue.
-        // We aren't worried about mutex here because FreeRTOS won't interrupt
-        // us until we block.
-        filling_queue = (processing_queue == mq1 ? mq2 : mq1);
-        mqi = 0;
-        mq_wrapped = 0;
-
-        if (didoverflow) {
-            // "recursive" broadcast is okay b/c/ we are just queuing it...
-            LOGE(TAG, "Broadcast queue overflowed!  Some messages will be missing.");
-        }
-
-        ESP_LOGI(TAG, "Sending %d messages", mqtop);
-        for(i=0; i<mqtop; i++) {
-            msg = (processing_queue + i*BROADCAST_MESSAGE_LEN);
-            slen = sendto(sock, msg, strlen(msg), 0, (struct sockaddr *)sa, sizeof(struct sockaddr_in));
-            if (slen < 0) {
-                ESP_LOGE(TAG, "Error occurred during broadcast: errno %d", errno);
-                return slen;
-            }
-        }
-    }
-    return 0;
-}
-
-
-
-// This can be dynamically modified
-int broadcast_interval = (5 * 1000);
-
-
-/* 
  * This behaves just like the listener loop, except that it is a sender,
  * and the action is hard-wired, not parameterizable.
  */
@@ -313,11 +184,11 @@ void broadcast_loop() {
         // initialize socket
         sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
         if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create broadcast socket: errno %d", errno);
+            LOGE(TAG, "Unable to create broadcast socket: errno %d", errno);
             break;
         }
         if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &optval, sizeof optval) < 0) {
-            ESP_LOGE(TAG, "Error setting broadcast mode: errno %d", errno);
+            LOGE(TAG, "Error setting broadcast mode: errno %d", errno);
             break;
         }
 
@@ -325,15 +196,15 @@ void broadcast_loop() {
         // note if it breaks in the middle of a queue, we'll loose some messages;
         // ok for now
         do {
-            vTaskDelay(broadcast_interval  / portTICK_PERIOD_MS);
-            ret = send_queue(sock, &addr);
+            vTaskDelay(  BROADCAST_INTERVAL / portTICK_PERIOD_MS );
+            ret = process_message_queue(sock, &addr);
         } while (ret >= 0);
 
         ESP_LOGI(TAG, "Shutting down broadcast socket and restarting");
         close(sock);
     }
 
-    ESP_LOGE(TAG, "Major error in broadcast_loop; aborting");
+    LOGE(TAG, "Major error in broadcast_loop; aborting");
     vTaskDelete(NULL);
 }
 

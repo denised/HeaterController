@@ -145,7 +145,7 @@ void ota_check(void) {
         }
     }
     else {
-        LOGW(TAG, "Unable to get OTA information!.  Continuing with current boot");
+        LOGI(TAG, "Unable to get OTA information!.  Continuing with current boot");
     }
 }
 
