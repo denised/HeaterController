@@ -96,10 +96,10 @@ void set_psv(const char *key, const char *newval) {
  * Show status via the on-board LED
  * We switch the LED between different colors to show different status:
  * 
- * Normal operation: blue and green
- * Booted within the last 10 minutes: green and yellow
- * There have been errors since last report: blue and red
- * There have been new errors in the last 30 minutes: red and yellow
+ * Normal operation: blue
+ * Booted within the last 10 minutes: green
+ * There have been errors since last report: yellow
+ * There have been new errors in the last 30 minutes: red
  * 
  * The timing of the color change is driven by the caller --- at this point I'm
  * just piggy-backing it on top of the messages task, so it gets the message
@@ -117,10 +117,10 @@ void set_psv(const char *key, const char *newval) {
 
 static led_strip_t *status_led;
 
-// static const int64_t boot_warning_duration = (10LL * 60 * 60 * 1000 * 1000);
-// static const int64_t new_error_limit = (30LL * 60 * 60 * 1000 * 1000);
-// static int last_error_count = 0;
-// static int64_t last_error_stamp = 0;
+static const int64_t boot_warning_duration = (10LL * 60 * 60 * 1000 * 1000);
+static const int64_t new_error_limit = (30LL * 60 * 60 * 1000 * 1000);
+static int last_error_count = 0;
+static int64_t last_error_stamp = 0;
 static int odd_even = 0;
 
 void init_status_led() {
@@ -128,24 +128,46 @@ void init_status_led() {
     status_led = led_strip_init(LED_RMT_CHANNEL, LED_PIN, 1);
     status_led->clear(status_led, LED_REFRESH_TIME);
 
-    // last_error_count = new_error_count();
-    // last_error_stamp = esp_timer_get_time();
+    last_error_count = new_error_count();
+    last_error_stamp = esp_timer_get_time();
+}
+
+// instead of blinking the led entirely, we alter intensity
+void led_color_pulse(int red, int green, int blue) {
+    if (odd_even) {
+        status_led->set_pixel(status_led, 0, red, green, blue);
+    }
+    else {
+        status_led->set_pixel(status_led, 0, red/3, green/3, blue/3);        
+    }
+    status_led->refresh(status_led, LED_REFRESH_TIME);
+    odd_even = 1 - odd_even;
 }
 
 void update_status_led() {
 
-    // int updated_err_count = new_error_count();
-    // if ( updated_err_count > last_error_count ) {
+    int updated_error_count = new_error_count();
+    int64_t now_stamp = esp_timer_get_time();
 
-    // }
-    if (odd_even == 0) {
-        status_led->set_pixel(status_led, 0, 40, 40, 0);
-        status_led->refresh(status_led, LED_REFRESH_TIME);
-        odd_even = 1;
+    // this won't behave perfectly following a "reset" --- we might want
+    // to add an explicit reset operation.
+    if ( updated_error_count > 0 ) {
+        if ( updated_error_count > last_error_count ) {
+            last_error_count = updated_error_count;
+            last_error_stamp = now_stamp;
+        }
+        
+        if ( now_stamp-last_error_stamp < new_error_limit ) {
+            led_color_pulse(200, 50, 0);
+        }
+        else {
+            led_color_pulse(180, 180, 0);
+        }
+    }
+    else if ( now_stamp < boot_warning_duration ) {
+        led_color_pulse(0, 230, 20);
     }
     else {
-        status_led->set_pixel(status_led, 0, 0, 40, 40);
-        status_led->refresh(status_led, LED_REFRESH_TIME);
-        odd_even = 0;
+        led_color_pulse(0, 50, 230);
     }
 }
