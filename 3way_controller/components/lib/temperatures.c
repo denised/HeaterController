@@ -82,6 +82,7 @@ float current_heater_temperature() {
         LOGE(TAG, "Unable to read heater temperature");
         return NO_TEMP_VALUE;
     }
+    return val;
 }
 
 

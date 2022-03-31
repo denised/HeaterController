@@ -196,6 +196,7 @@ void broadcast_loop() {
         // note if it breaks in the middle of a queue, we'll loose some messages;
         // ok for now
         do {
+            update_status_led();
             vTaskDelay(  BROADCAST_INTERVAL / portTICK_PERIOD_MS );
             ret = process_message_queue(sock, &addr);
         } while (ret >= 0);
@@ -209,5 +210,6 @@ void broadcast_loop() {
 }
 
 void init_broadcast_loop() {
-    xTaskCreate(broadcast_loop, "broadcast_loop", 4096, NULL, 5, NULL);    
+    init_status_led();
+    xTaskCreate(broadcast_loop, "broadcast_loop", 4096, NULL, 5, NULL);
 }

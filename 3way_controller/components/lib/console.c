@@ -70,7 +70,7 @@ int recieve_command(void *buf, int len) {
         esp_restart();
     }
     else if ( strcmp(cmd, "report") == 0 ) {
-        send_messagef(0, "Errors since boot: %d", current_error_count());
+        send_messagef(0, "Errors since boot: %d", error_count());
         report_errors();
         report_temperature_schedule();
     }

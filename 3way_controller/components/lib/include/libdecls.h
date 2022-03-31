@@ -36,12 +36,17 @@ void listener_task(const char *taskname, int port, int callback(void *, int));
 void get_internet_data(const char *server, const char *path, char *fill_buffer, int fb_len);
 void init_broadcast_loop();
 
+// led status
+void init_status_led();
+void update_status_led();
+
 
 // message and error management
 void send_message(int severity,const char *message);
 void send_messagef(int severity,const char *fmt, ...);
 int process_message_queue(int sock, void *sa);
-int current_error_count();
+int error_count();
+int new_error_count();
 void report_errors();
 
 // duplicating ESP logging so we can also send and log it

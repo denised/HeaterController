@@ -83,10 +83,16 @@ void send_messagef(int severity,const char *fmt, ...) {
 
 /*
  * Error management
+ * error_count is number of errors since boot.
+ * new_error_count is number of errors since last report.
  */
 
-int current_error_count() {
+int error_count() {
     return err_count;
+}
+
+int new_error_count() {
+    return new_errors;
 }
 
 void report_errors() {

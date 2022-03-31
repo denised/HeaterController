@@ -2,13 +2,15 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "nvs.h"
+#include "led_strip.h"
 #include "protocol_examples_common.h"
 #include "libconfig.h"
 #include "libdecls.h"
 
 static const char *TAG = "main";
-const char *version_string = "Errors on the run";
+const char *version_string = "Here comes the LED";
 nvs_handle_t storage_handle;
 
 void app_main(void)
@@ -51,6 +53,9 @@ void app_main(void)
 }
 
 
+/*
+ * Little bits of code that don't need their own files...
+ */
 
 /*
  *  Get and set persistent data
@@ -84,5 +89,63 @@ void set_psv(const char *key, const char *newval) {
     }
     else {
         LOGE(TAG, "Set psv key (%s)=(%s) error %d", key, newval, ret);
+    }
+}
+
+/*
+ * Show status via the on-board LED
+ * We switch the LED between different colors to show different status:
+ * 
+ * Normal operation: blue and green
+ * Booted within the last 10 minutes: green and yellow
+ * There have been errors since last report: blue and red
+ * There have been new errors in the last 30 minutes: red and yellow
+ * 
+ * The timing of the color change is driven by the caller --- at this point I'm
+ * just piggy-backing it on top of the messages task, so it gets the message
+ * interval.
+ * 
+ * This code uses a hard-to-discover extra IDF component: IDF_PATH/examples/common_components/led_strip.
+ * Examples of using it can be found in the IDF examples  get-started/blink  and   peripherals/rmt/led_strip
+ * This post was useful:
+ * https://www.electronics-lab.com/deep-dive-on-controlling-led-with-esp32-c3-devkitm-1-development-board-using-esp-idf/
+ */
+
+#define LED_RMT_CHANNEL 0   // you can chose 0-3; doesn't seem to matter which
+#define LED_PIN 8           // for this board, this is hard-wired
+#define LED_REFRESH_TIME 50 // milliseconds
+
+static led_strip_t *status_led;
+
+// static const int64_t boot_warning_duration = (10LL * 60 * 60 * 1000 * 1000);
+// static const int64_t new_error_limit = (30LL * 60 * 60 * 1000 * 1000);
+// static int last_error_count = 0;
+// static int64_t last_error_stamp = 0;
+static int odd_even = 0;
+
+void init_status_led() {
+
+    status_led = led_strip_init(LED_RMT_CHANNEL, LED_PIN, 1);
+    status_led->clear(status_led, LED_REFRESH_TIME);
+
+    // last_error_count = new_error_count();
+    // last_error_stamp = esp_timer_get_time();
+}
+
+void update_status_led() {
+
+    // int updated_err_count = new_error_count();
+    // if ( updated_err_count > last_error_count ) {
+
+    // }
+    if (odd_even == 0) {
+        status_led->set_pixel(status_led, 0, 40, 40, 0);
+        status_led->refresh(status_led, LED_REFRESH_TIME);
+        odd_even = 1;
+    }
+    else {
+        status_led->set_pixel(status_led, 0, 0, 40, 40);
+        status_led->refresh(status_led, LED_REFRESH_TIME);
+        odd_even = 0;
     }
 }
