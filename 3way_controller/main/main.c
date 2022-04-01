@@ -132,12 +132,13 @@ void init_status_led() {
     last_error_stamp = esp_timer_get_time();
 }
 
-// instead of blinking the led entirely, we alter intensity
+
 void led_color_pulse(int red, int green, int blue) {
     if (odd_even) {
         status_led->set_pixel(status_led, 0, red, green, blue);
     }
     else {
+        // instead of blinking the led entirely, we alter intensity
         status_led->set_pixel(status_led, 0, red/3, green/3, blue/3);        
     }
     status_led->refresh(status_led, LED_REFRESH_TIME);
@@ -149,8 +150,6 @@ void update_status_led() {
     int updated_error_count = new_error_count();
     int64_t now_stamp = esp_timer_get_time();
 
-    // this won't behave perfectly following a "reset" --- we might want
-    // to add an explicit reset operation.
     if ( updated_error_count > 0 ) {
         if ( updated_error_count > last_error_count ) {
             last_error_count = updated_error_count;
@@ -158,16 +157,23 @@ void update_status_led() {
         }
         
         if ( now_stamp-last_error_stamp < new_error_limit ) {
-            led_color_pulse(200, 50, 0);
+            led_color_pulse(255, 10, 0);
         }
         else {
             led_color_pulse(180, 180, 0);
         }
     }
-    else if ( now_stamp < boot_warning_duration ) {
-        led_color_pulse(0, 230, 20);
-    }
     else {
-        led_color_pulse(0, 50, 230);
+        // if updated error count == 0 then either there's never been an
+        // error, or we've done a reset.  either way, clear the previous error counters.
+        last_error_count = 0;
+        last_error_stamp = 0;
+
+        if ( now_stamp < boot_warning_duration ) {
+            led_color_pulse(0, 230, 20);
+        }
+        else {
+            led_color_pulse(0, 50, 230);
+        }
     }
 }
