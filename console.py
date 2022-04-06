@@ -77,6 +77,8 @@ if __name__ == "__main__":
             update: upgrade to the current version in the build directory
             reboot: tell the heater to reboot itself
             report: list useful info
+            time_update: fetch the current time/tz
+            errtest: generate a bunch of errors for testing purposes.
             """)
         elif cmd.startswith("up"):
             # Currently hardwiring the path.  If we need to handle multiple binaries, will have to modify.

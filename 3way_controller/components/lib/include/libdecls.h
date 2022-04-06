@@ -4,9 +4,11 @@ extern const char *version_string;      // main.c
 char *get_psv(const char *key);
 void set_psv(const char *key, const char *newval);
 
-// Time of day (we only need the hour)
+// Time of day funtions
 void init_time();
+int update_time();
 int current_hour();
+char *time_string(char *buf);
 
 // temperature sensing
 float current_ambient_temperature(); // in Celsius
@@ -33,7 +35,7 @@ void ota_check();
 
 // Network actions
 void listener_task(const char *taskname, int port, int callback(void *, int));
-void get_internet_data(const char *server, const char *path, char *fill_buffer, int fb_len);
+int get_internet_data(const char *server, const char *path, char *fill_buffer, int fb_len);
 void init_broadcast_loop();
 
 // led status

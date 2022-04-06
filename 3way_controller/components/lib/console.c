@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "libconfig.h"
 #include "libdecls.h"
 
@@ -70,15 +71,24 @@ int recieve_command(void *buf, int len) {
         esp_restart();
     }
     else if ( strcmp(cmd, "report") == 0 ) {
-        send_messagef(0, "Errors since boot: %d", error_count());
+        char *ts = time_string(NULL);
+        int64_t stamp = esp_timer_get_time();
+        int hours = stamp / (1000LL * 1000 * 60 * 60);
+        int minutes = (stamp / (1000LL * 1000 * 60)) % 60;
+        send_messagef(0, "Current time is %s", ts);
+        send_messagef(0, "Time since boot: %d:%2d.  Errors since boot: %d", hours, minutes, error_count());
         report_errors();
         report_temperature_schedule();
+        free(ts);
     }
     else if ( strcmp(cmd, "errtest") == 0 ) {
         // Generate a bunch of errors so we can see the behavior of the error handler
         for(int i=0; i<100; i++) {
             LOGE(TAG,"Test error %d", i);
         }
+    }
+    else if (strcmp(cmd, "time_update") == 0 ) {
+        update_time();
     }
     else {
         LOGI(TAG, "Unrecognized command %s", cmd);
@@ -88,6 +98,6 @@ int recieve_command(void *buf, int len) {
 }
 
 void init_console() {
-    listener_task("console", CNTRL_PORT, recieve_command);
+    listener_task("console_listener", CNTRL_PORT, recieve_command);
 }
 

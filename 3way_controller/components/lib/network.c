@@ -16,7 +16,7 @@
  * Three methods:
  *     listener_loop: passive connection listener
  *     get_internet_data: outbound fetch of URL.
- *     broadcast_message: broadcast UDP message
+ *     broadcast_loop: handle broadcasting of udp messages
  */
 
 /*
@@ -32,12 +32,12 @@ struct argsholder {
     int (*callback)(void *, int);
 };
 
-static char *TAG = "network";
 #define BUFLEN 1048
 
 
 void listener_loop(struct argsholder *args) {
     unsigned char rx_buffer[BUFLEN];
+    const char *tag = args->taskname;
     struct sockaddr_in listen_to = {
             .sin_family = AF_INET,
             .sin_port = htons(args->port),
@@ -47,13 +47,13 @@ void listener_loop(struct argsholder *args) {
     while (1) {
         int sock = socket(AF_INET, SOCK_DGRAM, 0);
         if (sock < 0) {
-            LOGE(TAG, "Unable to create socket: errno %d, task %s", errno, args->taskname);
+            LOGE(tag, "Unable to create socket: errno %d", errno);
             break;
         }
 
         int err = bind(sock, (struct sockaddr *)&listen_to, sizeof(listen_to));
         if (err < 0) {
-            LOGE(TAG, "Socket unable to bind: errno %d, task %s", errno, args->taskname);
+            LOGE(tag, "Socket unable to bind: errno %d", errno);
             break;
         }
 
@@ -61,7 +61,7 @@ void listener_loop(struct argsholder *args) {
             int received_len = recv(sock, rx_buffer, sizeof(rx_buffer), 0);
 
             if (received_len < 0) {
-                LOGE(TAG, "receive failed: errno %d, task %s", errno, args->taskname);
+                LOGE(tag, "receive failed: errno %d", errno);
                 break;
             }
             else {
@@ -69,11 +69,11 @@ void listener_loop(struct argsholder *args) {
             }
         }
 
-        LOGW(TAG, "Shutting down socket and restarting (task %s)", args->taskname);
+        LOGW(tag, "Shutting down socket and restarting");
         close(sock);
     }
 
-    LOGE(TAG, "Major error in task %s; aborting", args->taskname);
+    LOGE(tag, "Major error (%s); aborting", tag);
     vTaskDelete(NULL);
 }
 
@@ -93,78 +93,73 @@ void listener_task(const char *taskname, int port, int callback(void *, int)) {
  * If the actual data was longer than that, the rest is discarded.
  */
 
-void get_internet_data(const char *server, const char *path, char *fill_buffer, int fb_len) {
+int get_internet_data(const char *server, const char *path, char *fill_buffer, int fb_len) {
     const struct addrinfo hints = {
         .ai_family = AF_INET,
         .ai_socktype = SOCK_STREAM,
     };
+    const char *tag = "get_internet_data";
     struct addrinfo *res;
-    int sock;
+    int sock, err;
     char buf[256];
 
-    while(1) {
-        int err = getaddrinfo(server, "80", &hints, &res);
-
-        if(err != 0 || res == NULL) {
-            LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
-        }
-
-        sock = socket(res->ai_family, res->ai_socktype, 0);
-        if(sock < 0) {
-            LOGE(TAG, "... Failed to allocate socket.");
-            freeaddrinfo(res);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
-        }
-
-        if(connect(sock, res->ai_addr, res->ai_addrlen) != 0) {
-            LOGE(TAG, "... socket connect failed errno %d", errno);
-            close(sock);
-            freeaddrinfo(res);
-            vTaskDelay(4000 / portTICK_PERIOD_MS);
-            continue;
-        }
-        freeaddrinfo(res);
-
-        sprintf(buf, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", path, server);
-        LOGI(TAG, "request message:\n%s", buf);
-        if (write(sock, buf, strlen(buf)) < 0) {
-            LOGE(TAG, "... socket send failed");
-            close(sock);
-            vTaskDelay(4000 / portTICK_PERIOD_MS);
-            continue;
-        }
-
-        struct timeval receiving_timeout = { .tv_sec = 5 };
-        if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout, sizeof(receiving_timeout)) < 0) {
-            LOGE(TAG, "... failed to set socket receiving timeout");
-            close(sock);
-            vTaskDelay(4000 / portTICK_PERIOD_MS);
-            continue;
-        }
-
-        /* Read network response */
-        int i = 0, copy_len, r;
-        int recv_len = sizeof(buf)-1;
-
-        do {
-            bzero(buf, sizeof(buf));
-            r = read(sock, buf, recv_len);
-            ESP_LOGD(TAG, "... read %d", r);
-            if (r > 0) {
-                copy_len = ( i+r<fb_len ? r : fb_len-i-1 );
-                strncpy(fill_buffer+i, buf, copy_len);
-                i += copy_len;
-            }
-        } while(r > 0 && i < fb_len);
-        fill_buffer[i] = 0;
-
-        LOGI(TAG, "... done reading from socket. read %d, errno %d.", i, errno);
-        close(sock);
-        break;
+    err = getaddrinfo(server, "80", &hints, &res);
+    if(err != 0 || res == NULL) {
+        LOGE(tag, "DNS lookup failed err=%d res=%p", err, res);
+        return err;
     }
+
+    sock = socket(res->ai_family, res->ai_socktype, 0);
+    if(sock < 0) {
+        LOGE(tag, "Failed to allocate socket.");
+        freeaddrinfo(res);
+        return sock;
+    }
+
+    if(connect(sock, res->ai_addr, res->ai_addrlen) != 0) {
+        LOGE(tag, "socket connect failed errno %d", errno);
+        close(sock);
+        freeaddrinfo(res);
+        return errno;
+    }
+
+    freeaddrinfo(res);
+
+    sprintf(buf, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", path, server);
+    ESP_LOGI(tag, "request message:\n%s", buf);
+    
+    if (write(sock, buf, strlen(buf)) < 0) {
+        LOGE(tag, "socket send failed");
+        close(sock);
+        return errno;
+    }
+
+    struct timeval receiving_timeout = { .tv_sec = 5 };
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout, sizeof(receiving_timeout)) < 0) {
+        LOGE(tag, "failed to set socket receiving timeout");
+        close(sock);
+        return errno;
+    }
+
+    /* Read network response */
+    int i = 0, copy_len, r;
+    int recv_len = sizeof(buf)-1;
+
+    do {
+        bzero(buf, sizeof(buf));
+        r = read(sock, buf, recv_len);
+        ESP_LOGD(tag, "read %d", r);
+        if (r > 0) {
+            copy_len = ( i+r<fb_len ? r : fb_len-i-1 );
+            strncpy(fill_buffer+i, buf, copy_len);
+            i += copy_len;
+        }
+    } while(r > 0 && i < fb_len);
+    fill_buffer[i] = 0;
+
+    LOGI(tag, "done reading from socket. read %d, errno %d.", i, errno);
+    close(sock);
+    return 0;
 }
 
 /* 
@@ -174,6 +169,7 @@ void get_internet_data(const char *server, const char *path, char *fill_buffer, 
 void broadcast_loop() {
     int sock;
     int ret, optval = 1;
+    const char *tag = "broadcast_loop";
     struct sockaddr_in addr = {
             .sin_family = AF_INET,
             .sin_port = htons(BROADCAST_PORT),
@@ -184,11 +180,11 @@ void broadcast_loop() {
         // initialize socket
         sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
         if (sock < 0) {
-            LOGE(TAG, "Unable to create broadcast socket: errno %d", errno);
+            LOGE(tag, "Unable to create socket: errno %d", errno);
             break;
         }
         if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &optval, sizeof optval) < 0) {
-            LOGE(TAG, "Error setting broadcast mode: errno %d", errno);
+            LOGE(tag, "Error setting broadcast mode: errno %d", errno);
             break;
         }
 
@@ -201,11 +197,11 @@ void broadcast_loop() {
             ret = process_message_queue(sock, &addr);
         } while (ret >= 0);
 
-        ESP_LOGI(TAG, "Shutting down broadcast socket and restarting");
+        ESP_LOGI(tag, "Shutting down socket and restarting");
         close(sock);
     }
 
-    LOGE(TAG, "Major error in broadcast_loop; aborting");
+    LOGE(tag, "Major error; aborting");
     vTaskDelete(NULL);
 }
 

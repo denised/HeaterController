@@ -39,7 +39,8 @@
 
 // Maximum heater temperature to tolerate, in Celsius
 // The heater will be turned off if it reaches this temperature
-#define MAX_HEATER_TEMPERATURE 55
+// Note my heater can reaches this temperature easily, with only the medium element on...
+#define MAX_HEATER_TEMPERATURE 68
 
 // Frequency with which to check and update the heater control, in milliseconds
 #define HEATER_UPDATE_INTERVAL (30*1000)
