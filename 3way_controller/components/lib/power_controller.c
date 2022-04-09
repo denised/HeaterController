@@ -15,9 +15,9 @@
 // Otherwise, if the power level has been explicitly set, that is used.
 // Otherwise, the level is set based on the desired and existing temperatures.
 
-enum power_level { power_off, power_low, power_medium, power_high };
+enum power_level { power_off, power_low, power_medium, power_high, power_na };
 static enum power_level power_level = power_low;
-static int power_override = 0;
+static enum power_level power_override = power_na;
 static const char *TAG = "power controller";
 
 // float safe comparison
@@ -28,21 +28,20 @@ static const char *TAG = "power controller";
  */
 void set_power_level(char *level) {
     if ( strcmp(level,"auto") == 0 ) {
-        power_override = 0;
+        power_override = power_na;
     }
     else {
-        power_override = 1;
         if ( strcmp(level, "off") == 0 ) {
-            power_level = power_off;
+            power_override = power_level = power_off;
         }
         else if ( strcmp(level, "low") == 0 ) {
-            power_level = power_low;
+            power_override = power_level = power_low;
         }
         else if ( strncmp(level, "med", 3) == 0 ) {
-            power_level = power_medium;
+            power_override = power_level = power_medium;
         }
         else if ( strncmp(level, "hi", 2) == 0 ) {
-            power_level = power_high;
+            power_override = power_level = power_high;
         }
         else {
             LOGI(TAG, "Ignoring unrecognized power level %s", level);
@@ -68,29 +67,42 @@ void power_controller_loop() {
             LOGI(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
             power_level = power_off;
         }
-        else if ( power_override ) {
-            LOGI(TAG, "Using assigned power level %d", power_level);
+        else if ( power_override != power_na ) {
+            LOGI(TAG, "Using assigned power level %d", power_override );
+            power_level = power_override;
         }
         else if ( NO_T_VALUE(desired_temp) || NO_T_VALUE(actual_temp) ) {      
             LOGI(TAG, "Flying blind; maintain behavior: %d", power_level);
         }
 
-        // temporary logic; we expect we can do better than this
+        // I originally thought I'd have to do something more complicated than the following, but
+        // this rather simple approach seems to be working for me so far.  It probably depends
+        // a lot on things like insulation (heat flux away) and air flow.
+
         else if ( actual_temp > desired_temp ) {
             LOGI(TAG, "Too warm; turn off");
             power_level = power_off;
         }
-        else if ( desired_temp - actual_temp <= 2 ) {
+        else if ( desired_temp - actual_temp <= 1 ) {
             LOGI(TAG, "Just a little please");
             power_level = power_low;
         }
-        else if ( desired_temp - actual_temp <= 5 ) {
+        else if ( desired_temp - actual_temp <= 3 ) {
             LOGI(TAG, "Medium");
             power_level = power_medium;
         }
         else {
-            LOGI(TAG,"Full blast!");
-            power_level = power_high;
+            // At full power we usually exceed the max heater temperature fairly easily.
+            // Rather than going through cycling between full power and no power, let's try 
+            // to ease up before we hit that top temp.
+            if ( heater_temp > MAX_HEATER_TEMPERATURE-2 ) {
+                LOGI(TAG,"Hold up a little");
+                power_level = power_medium;
+            }
+            else {
+                LOGI(TAG,"Full blast!");
+                power_level = power_high;
+            }
         }
 
         switch(power_level) {
@@ -109,7 +121,10 @@ void power_controller_loop() {
             case power_high:
                 gpio_set_level(LWATT_PIN, 1);
                 gpio_set_level(HWATT_PIN, 1);
-                break;               
+                break; 
+            case power_na:
+                // can't happen; only power_override can be set to power_na
+                break;              
         }
         
         // Delay, in milliseconds.

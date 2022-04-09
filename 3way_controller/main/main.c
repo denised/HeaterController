@@ -10,7 +10,7 @@
 #include "libdecls.h"
 
 static const char *TAG = "main";
-const char *version_string = "Time there was a time that was";
+const char *version_string = "Power to the less than max";
 nvs_handle_t storage_handle;
 
 void app_main(void)
