@@ -1,5 +1,5 @@
 
-![DeLonghi Oil Heater](.images/delonghi.jpg)
+<img src=".images/topdrawing.svg" style="width:90%" alt="heater + microchip = happiness">
 
 
 # Controller for a common 3-way electric heater
