@@ -45,7 +45,7 @@ void set_power_level(char *level) {
         }
         else {
             LOGI(TAG, "Ignoring unrecognized power level %s", level);
-            power_override = 0;       
+            power_override = power_na;       
         }
     }
 }
@@ -65,6 +65,9 @@ void power_controller_loop() {
         
         if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
             LOGI(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
+            if ( heater_temp > MAX_HEATER_TEMPERATURE + 2 ) {
+                LOGE(TAG, "Help! Heater is overheating!");
+            }
             power_level = power_off;
         }
         else if ( power_override != power_na ) {
@@ -77,7 +80,7 @@ void power_controller_loop() {
 
         // I originally thought I'd have to do something more complicated than the following, but
         // this rather simple approach seems to be working for me so far.  It probably depends
-        // a lot on things like insulation (heat flux away) and air flow.
+        // a lot on things like insulation and air flow.
 
         else if ( actual_temp > desired_temp ) {
             LOGI(TAG, "Too warm; turn off");
@@ -95,7 +98,7 @@ void power_controller_loop() {
             // At full power we usually exceed the max heater temperature fairly easily.
             // Rather than going through cycling between full power and no power, let's try 
             // to ease up before we hit that top temp.
-            if ( heater_temp > MAX_HEATER_TEMPERATURE-2 ) {
+            if ( heater_temp > MAX_HEATER_TEMPERATURE-1 ) {
                 LOGI(TAG,"Hold up a little");
                 power_level = power_medium;
             }
