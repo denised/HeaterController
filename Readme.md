@@ -12,7 +12,7 @@ To make the heater perform better, I had two key objectives:
 
 I used two [ESP32-C3 boards](https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/hw-reference/index.html), one for the heater and one for the temperature sensor, which communicate using the built-in WIFI capabilities of the board.  The code for both is in this project, and in the xxx section below I will walk through the hardware and software configuration for this project.
 
-If you want to develop a controller for a heater, this code could serve as a starting point or inspiration.  I've also tried to separate different functions out so they can be understood and used independently.  But you would use them by copying the code into your own project, not as a "component" (in the ESP32 or Arduino sense).
+If you want to develop a controller for a heater, this code could serve as a starting point or inspiration.  I've also tried to separate different bits out so they could be understood and used independently.  But you would use them by copying the code into your own project, not as a "component" (in the ESP32 or Arduino sense).
 
 ## System Features
 
@@ -79,7 +79,7 @@ Yes, that is a strawberry carton I am using as a light protective cover.  And I 
 
 ### The Heater
 
-For the heater, we have three somewhat bulky mini-boards (aka featherwings aka bricks).  Because of the hieght of the power switches, they can't be mounted vertically, shield style, so I mounted them to a small pcb board.  Because they are a bit big and I only needed access to a few pins, I mounted them dangling off the board.
+For the heater, we have three somewhat bulky mini-boards (aka featherwings aka bricks).  Because of the hieght of the power switches, they can't be mounted vertically, shield style, so I mounted them to a small pcb board.  Because they are a bit big and I only needed access to a few pins, I mounted the switches dangling off the board.
 
 <img src=".images/board.png" style="width:100%; max-width:800px;" alt="picture of board with solder.">
 
@@ -94,7 +94,7 @@ That left the power supply to figure out.  This ended up being the most "questio
 
 I went with (3) since it just bugged me to buy a part that I already have in abundance, and I wasn't sure that extracting the converter from the charger packaging would actually result in a safer construction than using the charger as-is.   (Hint: if you want to use an old charger this way, make sure its output voltage and amperage are appropriate.  In this project in particular, each high-amp switch pulls about 100mA when operating, and some chargers wouldn't output enough current.)
 
-So here is how I attached the power to the plug:  I used some relatively stiff steel wire (a bit heavier than chicken wire) and wrapped it as tightly around each plug blade as I could.  This made a kind of "clip" that would force the braided wire of the power cord against the plug blade.  I assembled that and then wrapped first each blade then the whole plug with rubber electrical tape.  This wouldn't be sufficient if the power wire could be yanked on, but because of the way everything is mounted, I think it will be okay.   (Disclaimer: _please_ keep in mind I am an amateur at this; no warranties of safety or fitness for use, etc., etc.)
+So here is how I attached the power to the plug:  I used some relatively stiff steel wire (a bit heavier than chicken wire) and wrapped it as tightly around each plug blade as I could.  This made a kind of "clip" that would force the braided wire of the power cord against the plug blade.  Then for each blade, I inserted the wire into the clip, forced it onto the blade, then wrapped that with rubber electrical tape.  Finally I wrapped both blades together, just to finish it off. This wouldn't be sufficient if the power wire could be yanked on, but because of the way everything is mounted, I think it will be okay.   (Disclaimer: _please_ keep in mind I am an amateur at this; no warranties of safety or fitness for use, etc., etc.)
 
 <img src=".images/plug.png" style="width:100%; max-width:669px;" alt="picture of board with solder.">
 
