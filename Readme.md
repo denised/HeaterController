@@ -72,7 +72,7 @@ This is the first Arduino-ish project I have done, so I don't make any claims th
 
 The temperature station is cute and can be summarized with a single picture:
 
-(pic)
+<img src=".images/temp_station.jpg" style="width:50%; max-width:400px;" alt="picture of temperature station.">
 
 Yes, that is a strawberry carton I am using as a light protective cover.  And I happened to have this small stick-on breadboard, so I decided to just use that instead of a pcb board.
 
@@ -106,4 +106,4 @@ The rest was just connecting the power supply wires, testing it out, and putting
 
 One final little touch:  I use the on-board color LED of the ESP32-C3 board for status.  This LED isn't aimed at the front of the unit and it doesn't have any dedicated opening.  Instead it just kind of seeps out the air holes of the case.  This is kind of pretty and not as in-your-face as most status LEDs.
 
-(pic)
+<img src=".images/finished.png" style="width:100%; max-width:740px;" alt="finished heater picture.">
