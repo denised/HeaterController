@@ -86,7 +86,7 @@ void power_controller_loop() {
             LOGI(TAG, "Too warm; turn off");
             power_level = power_off;
         }
-        else if ( desired_temp - actual_temp <= 1 ) {
+        else if ( desired_temp - actual_temp <= 0.2 ) {
             LOGI(TAG, "Just a little please");
             power_level = power_low;
         }

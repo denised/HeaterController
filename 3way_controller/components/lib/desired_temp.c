@@ -79,7 +79,7 @@ void report_temperature_schedule() {
     // debugging routine so we can see what the actual schedule is.
     for(int i = 0; i < 4; i++) {
         int j = i*6;
-        send_messagef(0,"schedule %d %d %d %d %d %d", 
+        send_messagef(0,"schedule %d, %d, %d, %d, %d, %d", 
             temp_targets[j], temp_targets[j+1], temp_targets[j+2],
             temp_targets[j+3], temp_targets[j+4], temp_targets[j+5]);
     }
