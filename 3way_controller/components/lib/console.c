@@ -79,6 +79,7 @@ int recieve_command(void *buf, int len) {
         send_messagef(0, "Time since boot: %d:%2d.  Errors since boot: %d", hours, minutes, error_count());
         report_errors();
         report_temperature_schedule();
+        report_ambient_history_values();
         free(ts);
     }
     else if ( strcmp(cmd, "errtest") == 0 ) {

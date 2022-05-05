@@ -10,7 +10,7 @@
 #include "libdecls.h"
 
 static const char *TAG = "main";
-const char *version_string = "Shufflin' we be shufflin...";
+const char *version_string = "Smooooth operator";
 nvs_handle_t storage_handle;
 
 void app_main(void)

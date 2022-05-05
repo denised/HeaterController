@@ -14,6 +14,7 @@ char *time_string(char *buf);
 float current_ambient_temperature(); // in Celsius
 float current_heater_temperature();
 void init_temps();
+void report_ambient_history_values();
 
 // temperature setting
 void init_temperature_schedule();

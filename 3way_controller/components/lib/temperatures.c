@@ -14,15 +14,26 @@
 // * The heater temperature is the temperature of the heater itself, reflective of how hot the oil is, 
 //   is read from an onboard temperature sensor.
 //
-// For the ambient temperature, we keep track of how old the data is, and discard it if it is too old.
+// For the ambient temperature, we dampen the sensor variability by keeping a running average.
+// We also through away the data entirely if it is too old.
 
 
 static char *TAG = "temps";
 
-static float ambient_store = NO_TEMP_VALUE;
+// We get temperatures at 1-minute intervals, so this smooths over 15 minute periods
+#define HISTORY_LEN 15
+static float ambient_history[HISTORY_LEN];
+static int ahi = 0;
 static int64_t ambient_timestamp = 0;
 
 // Ambient temperature
+
+void reset_ambient_history() {
+    for(int i=0; i<HISTORY_LEN; i++) {
+        ambient_history[i] = NO_TEMP_VALUE;
+    }
+    ahi = 0;
+}
 
 float current_ambient_temperature() {
     
@@ -32,10 +43,24 @@ float current_ambient_temperature() {
     if (ts_delta > READ_LIFETIME*1000LL) {
         int mins = ts_delta / (1000*1000*60);
         ESP_LOGW(TAG,"Stored temp %d out of date by %d minutes", current_time, mins);
+        reset_ambient_history();
         return NO_TEMP_VALUE;
     }
     else {
-        return ambient_store;
+        float val = 0;
+        int count = 0;
+        for(int i = 0; i<HISTORY_LEN; i++) {
+            if (ambient_history[i] != NO_TEMP_VALUE) {
+                val += ambient_history[i];
+                count++;
+            }
+        }
+        if (count == 0) {
+            return NO_TEMP_VALUE;
+        }
+        else {
+            return val/count;
+        }
     }
 }
 
@@ -49,20 +74,31 @@ int receive_ambient_temperature(void *buf, int len) {
     // Extract the temperature (in Celsius)
     float val = atof(cbuf);
     if (val < 2 || val > 40) {
-        LOGW(TAG, "Ambient temperature out of range; ignoring");
+        LOGW(TAG, "Ambient temperature %f out of range; ignoring", val);
     }
     else {
-        // We might want to add an error check that the temperature change isn't greater than we expect?
-        int change = val - ambient_store;
-        if (change && ambient_store != NO_TEMP_VALUE) {
-            LOGI(TAG, "Ambient temperature change of %d degrees", change);
-        }
-
         // store it, and remember when we last read it
         ambient_timestamp = esp_timer_get_time();
-        ambient_store = val;
+        ambient_history[ahi++] = val;
+        if (ahi == HISTORY_LEN) {
+            ahi = 0;
+        }
     }
     return 0;
+}
+
+
+void report_ambient_history_values() {
+    static char ahstring[(HISTORY_LEN * 8) + 10];
+
+    memset(ahstring, ' ', (HISTORY_LEN*8)+9);
+    // For the paranoid: if any of the values run over, they will be written over by the next in line, leading
+    // to a garbled string, but not corrupted memory.  And the extra chars added to the buffer should prevent the
+    // last one from overflowing, as well.
+    for(int i=0; i<HISTORY_LEN; i++) {
+        sprintf(ahstring+(i*8), "%6.2f, ", ambient_history[i]);
+    }
+    send_messagef(0, "ambient temperature history %s", ahstring);
 }
 
 // Heater temperature
@@ -90,10 +126,14 @@ float current_heater_temperature() {
 // Do all initialization required.
 
 void init_temps() {
-    // ambient listener/updater
+    
+    // initialize ambient history
+    reset_ambient_history();
+
+    // start ambient listener/updater
     listener_task("ambient", TEMPERATURE_PORT, receive_ambient_temperature);
 
-    // onboard sensor
+    // initialize onboard sensor
     temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
     esp_err_t err = temp_sensor_set_config(temp_sensor);
     if (err != ESP_OK) {
