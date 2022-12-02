@@ -90,7 +90,7 @@ void power_controller_loop() {
             LOGI(TAG, "Just a little please");
             power_level = power_low;
         }
-        else if ( desired_temp - actual_temp <= 3 ) {
+        else if ( desired_temp - actual_temp <= 2 ) {
             LOGI(TAG, "Medium");
             power_level = power_medium;
         }
