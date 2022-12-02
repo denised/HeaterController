@@ -42,6 +42,19 @@ int recieve_command(void *buf, int len) {
     else if ( strcmp(cmd, "level") == 0 ) {
         set_power_level( args );
     }
+    else if ( strcmp(cmd, "maxheat") == 0 ) {
+        int m, found;
+        found = sscanf(args, " %d", &m);
+        if ( found != 1 ) {
+            LOGI(TAG,"Malformed maxheat command? |%s|", args);
+        }
+        else if ( m < 60 || m > 100) {
+            LOGI(TAG,"Refused: will not set maxheat outside of 60-100 Celsius");
+        }
+        else {
+            set_max_temperature(m);
+        }
+    }
     else if ( strcmp(cmd, "bump") == 0 ) {
         int amount, duration, found;
         found = sscanf(args, " %d %d", &amount, &duration);
@@ -79,6 +92,7 @@ int recieve_command(void *buf, int len) {
         send_messagef(0, "Time since boot: %d:%2d.  Errors since boot: %d", hours, minutes, error_count());
         report_errors();
         report_temperature_schedule();
+        send_messagef(0, "Current max is %d", max_temperature());
         report_ambient_history_values();
         free(ts);
     }

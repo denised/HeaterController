@@ -40,6 +40,7 @@
 // Maximum heater temperature to tolerate, in Celsius
 // The heater will be turned off if it reaches this temperature
 // Note my heater can reaches this temperature easily on high
+// Note2: I've made this something I can set via console; this value is the initial value
 #define MAX_HEATER_TEMPERATURE 70
 
 // Frequency with which to check and update the heater control, in milliseconds

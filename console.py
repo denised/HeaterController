@@ -72,6 +72,7 @@ if __name__ == "__main__":
             level off|low|medium|high|auto: set heater level
             bump amount, duration: increase/decrease the desired temperature by
                   amount degrees for duration hours
+            maxheat n: set the maximum heater temperature to n, where 60 <= n <= 100.
             schedule <n>,<n>...:  set an hourly schedule for desired temps.  If the
                   schedule is less than 24 hours long, the last value is repeated.
             update: upgrade to the current version in the build directory

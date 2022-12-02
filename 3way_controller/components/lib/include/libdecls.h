@@ -17,6 +17,8 @@ void init_temps();
 void report_ambient_history_values();
 
 // temperature setting
+int max_temperature();
+void set_max_temperature(int val);
 void init_temperature_schedule();
 void set_temperature_schedule(const char *sched);
 void bump_temperature(int increment, int hours);

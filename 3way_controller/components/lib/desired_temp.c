@@ -15,6 +15,15 @@ static int override_temp = NO_TEMP_VALUE;
 static int64_t override_until = 0;
 
 
+static int max_heater_temperature = MAX_HEATER_TEMPERATURE;
+
+int max_temperature() {
+    return max_heater_temperature;
+}
+void set_max_temperature(int newval) {
+    max_heater_temperature = newval;
+}
+
 /*
  * Parse a set of temperature values from a string.  We are expecting 24 comma-separated
  * integers (in reasonable ranges).  If there are too few values we repeat the last one to make

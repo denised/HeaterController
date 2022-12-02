@@ -52,7 +52,7 @@ void set_power_level(char *level) {
 
 
 void power_controller_loop() {
-    float desired_temp, actual_temp, heater_temp;
+    float desired_temp, actual_temp, heater_temp, max_temp;
 
     // Delay a bit to let various initializations have a go.
     vTaskDelay(2000 / portTICK_PERIOD_MS);
@@ -61,11 +61,12 @@ void power_controller_loop() {
         desired_temp = current_desired_temperature();
         actual_temp = current_ambient_temperature();
         heater_temp = current_heater_temperature();
-        LOGI(TAG,"Desired temp %f, actual %f, heater %f", desired_temp, actual_temp, heater_temp);
+        max_temp = max_temperature();
+        LOGI(TAG,"Desired temp %f, actual %f, heater %f, max %f", desired_temp, actual_temp, heater_temp, max_temp);
         
-        if ( heater_temp > MAX_HEATER_TEMPERATURE ) {
+        if ( heater_temp > max_temp ) {
             LOGI(TAG, "Discontinuing heat, heater temperature is %f", heater_temp);
-            if ( heater_temp > MAX_HEATER_TEMPERATURE + 2 ) {
+            if ( heater_temp > max_temp + 2 ) {
                 LOGE(TAG, "Help! Heater is overheating!");
             }
             power_level = power_off;
@@ -98,7 +99,7 @@ void power_controller_loop() {
             // At full power we usually exceed the max heater temperature fairly easily.
             // Rather than going through cycling between full power and no power, let's try 
             // to ease up before we hit that top temp.
-            if ( heater_temp > MAX_HEATER_TEMPERATURE-1 ) {
+            if ( heater_temp > max_temp-1 ) {
                 LOGI(TAG,"Hold up a little");
                 power_level = power_medium;
             }
