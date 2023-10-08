@@ -20,7 +20,7 @@ If you want to develop a controller for a heater, this code could serve as a sta
 This extremely simple project just attaches a temperature sensor to an ESP32-C3 and broadcasts the current temperature at intervals.
 
 ### Power Controller
-The main function of the power controller is to determine which heater elements) should be on.  Most of these heaters have two elements of two different wattages (mine are 650W and 850W), which can be turned on independently or together, resulting in three heating levels.  The logic decides what level to set based on how far the current temperature is from the desired temperature.  It also measures the temperature of the heater itself (using the onboard temp sensor on the ESP32 board itself) to keep the heater from getting too hot.
+The main function of the power controller is to determine which heater element(s) should be on.  Most of these heaters have two elements of two different wattages (mine are 650W and 850W), which can be turned on independently or together, resulting in three heating levels.  The logic decides what level to set based on how far the current temperature is from the desired temperature.  It also measures the temperature of the heater itself (using the onboard temp sensor on the ESP32 board itself) to keep the heater from getting too hot.
 
 ### Console 
 Interaction with the heater controller is through the console, which is a very simple python program on the client side, and the matching module on the controller side.  Almost all communication is done via broadcast UDP, which greatly simplifies setup and management.  This works fine in a home WIFI environment like mine, but would obviously not be sufficient in larger or public networks.
@@ -63,7 +63,7 @@ I chose the [ESP32-C3](https://docs.espressif.com/projects/esp-idf/en/latest/esp
 * High heat tolerance (up to 140C)
 * Inexpensive (only $8)
 
-For the high-amp switches, which supply power to the heater elements, I used the [Adafruit Power Relay unit](https://www.adafruit.com/product/3191, and the temperature sensor is a [TMP36](https://www.adafruit.com/product/165) (though I am sure literally any such sensor could be used.)
+For the high-amp switches, which supply power to the heater elements, I used the [Adafruit Power Relay unit](https://www.adafruit.com/product/3191), and the temperature sensor is a [TMP36](https://www.adafruit.com/product/165) (though I am sure literally any such sensor could be used.)
 
 For power supply, I just re-used a couple of the pile of old device chargers I have lying around.
 
